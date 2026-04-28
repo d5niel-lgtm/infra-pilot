@@ -12,10 +12,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
+      - name: Cache Python packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
       - name: Lint
         run: bash tools/lint-all.sh
       - name: Run all tests
