@@ -289,7 +289,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full contribution guidelines.
 ### Testing
 
 ```bash
-# Run all tests
+# Run all tests (local)
 ./scripts/test.sh
 
 # Run service-specific tests
@@ -298,6 +298,12 @@ cd services/management-panel && npm run test
 cd services/discord-service && npm run test
 cd services/service-core && mvn test
 ```
+
+### CI & Test Scaffolding
+- This repository uses GitHub Actions (see .github/workflows/ci-core.yml) to run the core CI suite on push/PRs. The CI runs unit tests, integration tests, linting, and build checks as configured in ci-core.yml.
+- Release scaffolding is provided via scripts/release.sh. It can tag releases and optionally update CHANGELOG.md before pushing the tag.
+- Integration test scaffolding exists at tests/integration/README.md (skeleton provided for future end-to-end tests).
+- Locally, you can mirror CI steps by running per-service tests (pytest for Python services, npm test for Node services, mvn test for Java services) as shown above.
 
 ### Code Quality
 
