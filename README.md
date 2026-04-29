@@ -42,14 +42,38 @@
 
 ## 🚀 Quick Start
 
+### Docker Panel (NEW) 🆕
+
+The Docker Panel is a new, modern self-hosted Docker management interface with **Personal Mode for self-hosters** and optional Business Mode features.
+
+```bash
+cd services/management-panel
+
+# 1. Copy environment template
+cp .env.local.example .env.local
+
+# 2. Install dependencies
+npm install
+
+# 3. Start frontend + backend (both)
+npm run dev
+```
+
+Then visit: **http://localhost:5173**
+- API runs on: **http://localhost:3001**
+
+**First time?** See [Docker Panel Quick Start](services/management-panel/README-DOCKER-PANEL.md)
+
+---
+
 ### Prerequisites
 
 - Docker & Docker Compose (recommended)
-- OR: Java 8+, Python 3.9+, Node.js 18+
+- Node.js 18+ (for Docker Panel)
 - Git
 - 4GB RAM minimum
 
-### Option 1: Docker Compose (Fastest)
+### Option 1: Docker Compose (All Services)
 
 ```bash
 # Clone the repository
@@ -63,13 +87,24 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
-All services start on their designated ports:
-- Dashboard: http://localhost:5173
-- Discord: Ready for webhook integration
-- Service Core: http://localhost:8080
-- Orchestrator API: http://localhost:8000
+Services available:
+- **Docker Panel**: http://localhost:5173 (Personal Mode by default)
+- **Docker Panel API**: http://localhost:3001
+- **Discord Service**: Ready for webhook integration
+- **Service Core**: http://localhost:8080
+- **Orchestrator API**: http://localhost:8000
 
-### Option 2: Local Development
+### Option 2: Docker Panel Only (Quickest)
+
+```bash
+cd services/management-panel
+npm install
+npm run dev
+```
+
+Requires Supabase. See [Database Setup](services/management-panel/docs/DATABASE_SETUP.md)
+
+### Option 3: Local Development (All Services)
 
 ```bash
 # Clone and setup
@@ -135,7 +170,7 @@ See [docs/setup/local-development.md](docs/setup/local-development.md) for detai
 
 | Service | Purpose | Language | Port |
 |---------|---------|----------|------|
-| **Management Panel** | Operations UI | TypeScript/React | 5173 |
+| **Management Panel** | Docker Container Management (NEW) | TypeScript/React + Express | 5173/3001 |
 | **Orchestrator Agent** | Core logic & provisioning | Python | 8000 |
 | **Discord Service** | Discord bot interface | Node.js | - |
 | **Service Core** | Server management | Java | 8080 |
@@ -146,13 +181,17 @@ See [docs/architecture/overview.md](docs/architecture/overview.md) for detailed 
 
 ## 📦 Services
 
-### 1. Management Panel (`services/management-panel/`)
-Web-based operations and monitoring interface.
+### 1. Management Panel (`services/management-panel/`) - Docker Panel
+Web-based Docker container management interface for self-hosted deployments.
 
-- **Tech Stack:** React 19, TypeScript, Tailwind CSS, Convex
-- **Features:** Real-time server status, provisioning UI, user management
+- **Tech Stack:** React 19, TypeScript, Tailwind CSS, Express.js, Supabase/PostgreSQL
+- **Modes:** 
+  - **Personal Mode** (default): Simple Docker management for individual users
+  - **Business Mode** (optional): Multi-user, billing, white-label, team management
+- **Features:** Docker app creation/management, container status monitoring, log viewing, resource allocation
 - **Setup:** `cd services/management-panel && npm install && npm run dev`
-- **Docs:** [services/management-panel/README.md](services/management-panel/README.md)
+- **Docs:** [services/management-panel/README.md](services/management-panel/README.md) | [services/management-panel/TRANSFORMATION.md](services/management-panel/TRANSFORMATION.md)
+- **Database:** See [services/management-panel/docs/DATABASE_SETUP.md](services/management-panel/docs/DATABASE_SETUP.md)
 
 ### 2. Orchestrator Agent (`services/orchestrator-agent/`)
 Core provisioning and orchestration engine.
