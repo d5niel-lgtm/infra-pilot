@@ -1,6 +1,8 @@
 from pathlib import Path
 import sys
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import modules.aws_extended_001 as aws001
@@ -27,61 +29,29 @@ def _assert_common_fields(obj, service_name: str, class_index: str, region: str,
     }
 
 
-def test_awsec2service001_initialization_sets_expected_fields():
-    service = aws001.AWSEC2Service001(region="eu-central-1", account_id="123456789012")
-    _assert_common_fields(service, "ec2", "001", "eu-central-1", "123456789012")
+TEST_CASES = [
+    (aws001.AWSEC2Service001, "eu-central-1", "123456789012", "ec2", "001"),
+    (aws001.AWSS3Service002, "us-west-2", "210987654321", "s3", "002"),
+    (aws001.AWSRDSService003, "ap-southeast-1", "555544443333", "rds", "003"),
+    (aws001.AWSLambdaService004, "eu-west-1", "111122223333", "lambda", "004"),
+    (aws001.AWSECSService005, "sa-east-1", "444455556666", "ecs", "005"),
+    (aws001.AWSEKSService006, "ca-central-1", "777788889999", "eks", "006"),
+    (aws001.AWSDynamoDBService007, "us-east-2", "101010101010", "dynamodb", "007"),
+    (aws001.AWSCloudWatchService008, "eu-north-1", "202020202020", "cloudwatch", "008"),
+    (aws001.AWSIAMService009, "ap-northeast-1", "303030303030", "iam", "009"),
+    (aws001.AWSVPCService010, "af-south-1", "404040404040", "vpc", "010"),
+    (aws001.AWSRoute53Service011, "me-south-1", "505050505050", "route53", "011"),
+    (aws001.AWSSNSService012, "eu-south-1", "606060606060", "sns", "012"),
+]
 
 
-def test_awss3service002_initialization_sets_expected_fields():
-    service = aws001.AWSS3Service002(region="us-west-2", account_id="210987654321")
-    _assert_common_fields(service, "s3", "002", "us-west-2", "210987654321")
-
-
-def test_awsrdsservice003_initialization_sets_expected_fields():
-    service = aws001.AWSRDSService003(region="ap-southeast-1", account_id="555544443333")
-    _assert_common_fields(service, "rds", "003", "ap-southeast-1", "555544443333")
-
-
-def test_awslambdaservice004_initialization_sets_expected_fields():
-    service = aws001.AWSLambdaService004(region="eu-west-1", account_id="111122223333")
-    _assert_common_fields(service, "lambda", "004", "eu-west-1", "111122223333")
-
-
-def test_awsecsservice005_initialization_sets_expected_fields():
-    service = aws001.AWSECSService005(region="sa-east-1", account_id="444455556666")
-    _assert_common_fields(service, "ecs", "005", "sa-east-1", "444455556666")
-
-
-def test_awseksservice006_initialization_sets_expected_fields():
-    service = aws001.AWSEKSService006(region="ca-central-1", account_id="777788889999")
-    _assert_common_fields(service, "eks", "006", "ca-central-1", "777788889999")
-
-
-def test_awsdynamodbservice007_initialization_sets_expected_fields():
-    service = aws001.AWSDynamoDBService007(region="us-east-2", account_id="101010101010")
-    _assert_common_fields(service, "dynamodb", "007", "us-east-2", "101010101010")
-
-
-def test_awscloudwatchservice008_initialization_sets_expected_fields():
-    service = aws001.AWSCloudWatchService008(region="eu-north-1", account_id="202020202020")
-    _assert_common_fields(service, "cloudwatch", "008", "eu-north-1", "202020202020")
-
-
-def test_awsiamservice009_initialization_sets_expected_fields():
-    service = aws001.AWSIAMService009(region="ap-northeast-1", account_id="303030303030")
-    _assert_common_fields(service, "iam", "009", "ap-northeast-1", "303030303030")
-
-
-def test_awsvpcservice010_initialization_sets_expected_fields():
-    service = aws001.AWSVPCService010(region="af-south-1", account_id="404040404040")
-    _assert_common_fields(service, "vpc", "010", "af-south-1", "404040404040")
-
-
-def test_awsroute53service011_initialization_sets_expected_fields():
-    service = aws001.AWSRoute53Service011(region="me-south-1", account_id="505050505050")
-    _assert_common_fields(service, "route53", "011", "me-south-1", "505050505050")
-
-
-def test_awssnsservice012_initialization_sets_expected_fields():
-    service = aws001.AWSSNSService012(region="eu-south-1", account_id="606060606060")
-    _assert_common_fields(service, "sns", "012", "eu-south-1", "606060606060")
+@pytest.mark.parametrize(
+    "service_class, region, account_id, service_name, class_index",
+    TEST_CASES,
+    ids=[f"{service_name}-{region}" for _, region, _, service_name, _ in TEST_CASES],
+)
+def test_service_initialization_sets_expected_fields(
+    service_class, region: str, account_id: str, service_name: str, class_index: str
+):
+    service = service_class(region=region, account_id=account_id)
+    _assert_common_fields(service, service_name, class_index, region, account_id)
