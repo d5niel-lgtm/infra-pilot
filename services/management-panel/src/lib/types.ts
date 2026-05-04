@@ -40,6 +40,15 @@ export interface AppConfig {
   mode: SetupMode;
 }
 
+export interface Customer {
+  id: string;
+  owner_user_id: string;
+  name: string;
+  email?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Feature gates based on mode
 export const featureGates = {
   isPersonal: (mode: SetupMode) => mode === 'personal',

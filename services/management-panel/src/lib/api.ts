@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { DockerApp, SetupStatus, UserProfile, AppConfig } from './types';
+import { DockerApp, SetupStatus, UserProfile, AppConfig, Customer } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -99,6 +99,33 @@ class APIClient {
   // Config endpoints
   async getConfig(): Promise<AppConfig> {
     const res = await this.api.get('/api/config/mode');
+    return res.data;
+  }
+
+  // Customers (Business Mode MVP)
+  async getCustomers(): Promise<Customer[]> {
+    const res = await this.api.get('/api/customers');
+    return res.data;
+  }
+
+  async createCustomer(customer: Partial<Customer>): Promise<Customer> {
+    const res = await this.api.post('/api/customers', customer);
+    return res.data;
+  }
+
+  async updateCustomer(customerId: string, updates: Partial<Customer>): Promise<any> {
+    const res = await this.api.patch(`/api/customers/${customerId}`, updates);
+    return res.data;
+  }
+
+  async deleteCustomer(customerId: string): Promise<any> {
+    const res = await this.api.delete(`/api/customers/${customerId}`);
+    return res.data;
+  }
+
+  // Seed demo data (customers + apps)
+  async seedDemo(): Promise<any> {
+    const res = await this.api.post('/api/seed-demo');
     return res.data;
   }
 

@@ -5,12 +5,44 @@ import dotenv from 'dotenv';
 import http from 'http';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import path from 'path';
+import { promises as fs } from 'fs';
 
 dotenv.config({ path: '.env.local' });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = process.env.PORT || 3001;
+
+// Simple observability instrumentation
+const APP_VERSION = process.env.APP_VERSION || 'dev';
+const metrics: {
+  requests: number;
+  totalDurationMs: number;
+  endpoints: Record<string, { count: number; totalMs: number }>;
+} = {
+  requests: 0,
+  totalDurationMs: 0,
+  endpoints: {},
+};
+
+// Basic request instrumentation middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    metrics.requests += 1;
+    metrics.totalDurationMs += duration;
+    const key = req.path;
+    const ep = metrics.endpoints[key] || { count: 0, totalMs: 0 };
+    ep.count += 1;
+    ep.totalMs += duration;
+    metrics.endpoints[key] = ep;
+    // Simple log for observability during development
+    console.log(`[infra-pilot] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+});
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://localhost:54321';
@@ -20,6 +52,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Health and observability-aware health
+const APP_HEALTH = {
+  status: 'ok',
+  uptime: process.uptime(),
+  version: APP_VERSION,
+  metrics,
+};
 
 // Auth middleware: Verify JWT token from Authorization header
 const verifyAuth = async (req: Request, res: Response, next: NextFunction) => {
@@ -433,9 +473,177 @@ app.get('/api/config/mode', verifyAuth, async (req: Request, res: Response) => {
   }
 });
 
-// Health check
+// Health check with basic instrumentation exposure
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok' });
+  // Return some useful health metrics for observability
+  res.json({ status: 'ok', uptime: process.uptime(), version: APP_VERSION, metrics });
+});
+
+// GET /api/demo/flag - Expose the Demo feature flag for testing/CI verification
+app.get('/api/demo/flag', (_req: Request, res: Response) => {
+  const enabled = process.env.VITE_DEMO_FEATURE_ENABLED === 'true';
+  res.json({ enabled });
+});
+
+// Minimal Business Mode MVP: expose a placeholder endpoint for customers
+// Access controlled via existing verifyAuth middleware
+app.get('/api/customers', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  try {
+    const { data: cfg } = await supabase.from('setup_config').select('mode').single();
+    const mode = (cfg as any)?.mode || 'personal';
+    if (mode === 'personal') {
+      return res.status(403).json({ error: 'Not available in Personal Mode' });
+    }
+    // Seed data on first boot for this user if no customers exist yet
+    const { data: existingForUser, error: ex } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('owner_user_id', userId)
+      .limit(1);
+      if (!existingForUser || existingForUser.length === 0) {
+      try {
+        const seedsPath = path.join(__dirname, '..', 'seeds', 'customers.sample.json');
+        let seeds: Array<{ name: string; email?: string } > = [];
+        try {
+          const raw = await fs.readFile(seedsPath, 'utf8');
+          seeds = JSON.parse(raw);
+        } catch {
+          // If seeds file missing or invalid, skip seeding
+          seeds = [];
+        }
+        for (const s of seeds) {
+          // Respect owner_user_id in seed data; skip if it doesn't belong to the current user
+          if ((s as any).owner_user_id && (s as any).owner_user_id !== userId) continue;
+          if (!s?.name) continue;
+          const { data: exists, error: e2 } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('owner_user_id', userId)
+            .eq('name', s.name)
+            .limit(1);
+          if (exists && exists.length > 0) continue;
+          await supabase
+            .from('customers')
+            .insert({ owner_user_id: userId, name: s.name, email: s.email ?? null })
+            .select()
+            .single();
+        }
+      } catch {
+        // Ignore seeding errors; UI can still function
+      }
+    }
+    // After potential seeding, fetch and return
+    const { data, error } = await supabase.from('customers').select('*').eq('owner_user_id', userId);
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch customers' });
+  }
+});
+
+// POST /api/customers - Create a new customer (Business Mode only)
+app.post('/api/customers', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const { name, email } = req.body;
+  try {
+    const { data: cfg } = await supabase.from('setup_config').select('mode').single();
+    const mode = (cfg as any)?.mode || 'personal';
+    if (mode === 'personal') {
+      return res.status(403).json({ error: 'Not available in Personal Mode' });
+    }
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    const { data, error } = await supabase.from('customers').insert({ owner_user_id: userId, name, email }).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create customer' });
+  }
+});
+
+// POST /api/seed-demo - Seed demo data (customers + apps) for quick local demos
+app.post('/api/seed-demo', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  try {
+    const { data: cfg } = await supabase.from('setup_config').select('mode').single();
+    const mode = (cfg as any)?.mode || 'personal';
+    if (mode === 'personal') {
+      return res.status(403).json({ error: 'Not available in Personal Mode' });
+    }
+
+    const demoCustomers = [
+      { owner_user_id: userId, name: 'Acme Co', email: 'contact@acme.local' },
+      { owner_user_id: userId, name: 'Globex Corp', email: 'hello@globex.local' },
+    ];
+    // Idempotent: seed only missing customers for this user
+    let insertedCustomers: any[] = [];
+    for (const dc of demoCustomers) {
+      const { data: exists } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('owner_user_id', userId)
+        .eq('name', dc.name)
+        .single();
+      if (!exists) {
+        const { data } = await supabase.from('customers').insert({ owner_user_id: userId, name: dc.name, email: dc.email }).select().single();
+        if (data) insertedCustomers.push(data);
+      }
+    }
+    // Prepare apps for seed (optional)
+    const demoApps = [
+      { user_id: userId, name: 'demo-app', image: 'nginx:latest', status: 'stopped', memory_limit: '256mb' },
+      { user_id: userId, name: 'monitor', image: 'prom/prometheus', status: 'stopped', memory_limit: '256mb' },
+    ];
+    const { data: insertedApps, error: appError } = await supabase.from('docker_apps').insert(demoApps).select().then((r) => ({ data: r.data, error: null }));
+
+    const customersSeeded = Array.isArray(insertedCustomers) ? insertedCustomers.length : 0;
+    const appsSeeded = Array.isArray(insertedApps) ? insertedApps.length : 0;
+    res.json({ customersSeeded, appsSeeded });
+  } catch (err) {
+    res.status(500).json({ error: 'Seed-demo failed' });
+  }
+});
+
+// PATCH /api/customers/:customerId - Update a customer (Business Mode only)
+app.patch('/api/customers/:customerId', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const { customerId } = req.params;
+  const updates = req.body;
+  try {
+    // Ensure ownership and apply updates
+    const { data, error } = await supabase
+      .from('customers')
+      .update(updates)
+      .eq('id', customerId)
+      .eq('owner_user_id', userId)
+      .select()
+      .single();
+    if (error || !data) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update customer' });
+  }
+});
+
+// DELETE /api/customers/:customerId - Delete a customer (Business Mode only)
+app.delete('/api/customers/:customerId', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const { customerId } = req.params;
+  try {
+    const { error } = await supabase
+      .from('customers')
+      .delete()
+      .eq('id', customerId)
+      .eq('owner_user_id', userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete customer' });
+  }
 });
 
 app.listen(port, () => {

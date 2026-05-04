@@ -31,3 +31,16 @@ Neutral naming
 
 Documentation
 - See docs/testing for detailed plans, mappings, and runbooks
+
+- See docs/CI_DEMO_GATE.md for CI gating verification and local run steps for the Seed Demo gating.
+
+## What changed today (Overview of changes)
+- Observability: added request instrumentation and enhanced /health with metrics.
+- Backend MVP: /api/customers CRUD (Business mode) with RLS; seed scaffolding for local demos.
+- Seed data: seeds/customers.sample.json and seed scripts.
+- Seed Demo: UI button with a modal, gated by per-env flag VITE_DEMO_FEATURE_ENABLED; 1-click demo flow via /api/seed-demo.
+- Global demo status badge: new DemoFlagBadge shown in header; global across app.
+- CI: GitHub Actions updated to exercise gating in two CI runs (flag true/false), plus a gating test demo_gate.spec.ts.
+- Tests: new Playwright test demo_gate.spec.ts to verify gating against environment flag; existing health test preserved.
+- Documentation: added README snippets describing the per-env gating and how to configure VITE_DEMO_FEATURE_ENABLED, plus QA checklist.
+- UI polish: Customers page improved with Seed Demo modal; Confirm flow added; badge present across app.

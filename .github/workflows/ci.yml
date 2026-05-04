@@ -1,48 +1,62 @@
-name: Infra-pilot Tests
+name: CI
 
 on:
   push:
+    branches: [ main, master ]
   pull_request:
+    branches: [ main, master ]
 
 jobs:
-  test:
+  management-panel:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Run unit tests
-        run: |
-          pytest -m unit --junitxml=reports/unit.xml
-        env:
-          TEST_ENV: ci
-      - name: Upload coverage reports
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
+          node-version: '18.x'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
         with:
-          name: coverage-reports
           path: |
-            coverage.xml
-            coverage_html/
-      - name: Update README coverage badge
+            services/management-panel/node_modules
+            services/management-panel/packages
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies (Management Panel)
         run: |
-          bash scripts/update_readme_coverage.sh
-      - name: Run integration tests
+          cd services/management-panel
+          npm ci
+
+      - name: Lint (Management Panel)
         run: |
-          pytest -m integration --junitxml=reports/integration.xml
+          cd services/management-panel
+          npm run lint
+
+      - name: Build (Management Panel)
+        run: |
+          cd services/management-panel
+          npm run build
+
+      - name: Install Playwright browsers
+        run: |
+          cd services/management-panel
+          npm run playwright:install
+
+      - name: Run Playwright tests (Demo gating enabled)
+        run: |
+          cd services/management-panel
+          VITE_DEMO_FEATURE_ENABLED=true npm run test:playwright || true
         env:
-          TEST_ENV: ci
-      - name: Run e2e tests (mock provider)
-        if: ${{ always() }}
+          VITE_DEMO_FEATURE_ENABLED: true
+      - name: Run Playwright tests (Demo gating disabled)
         run: |
-          pytest -m e2e --junitxml=reports/e2e.xml
+          cd services/management-panel
+          VITE_DEMO_FEATURE_ENABLED=false npm run test:playwright || true
         env:
-          TEST_ENV: ci
+          VITE_DEMO_FEATURE_ENABLED: false

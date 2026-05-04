@@ -81,6 +81,27 @@ ALTER TABLE app_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pterodactyl_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
+-- MVP Customers table (Business Mode)
+CREATE TABLE IF NOT EXISTS customers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Customers RLS
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own customers" ON customers
+FOR SELECT USING (auth.uid() = owner_user_id);
+CREATE POLICY "Users can insert their own customers" ON customers
+FOR INSERT WITH CHECK (auth.uid() = owner_user_id);
+CREATE POLICY "Users can update their own customers" ON customers
+FOR UPDATE USING (auth.uid() = owner_user_id);
+CREATE POLICY "Users can delete their own customers" ON customers
+FOR DELETE USING (auth.uid() = owner_user_id);
+
 -- Docker Apps RLS
 CREATE POLICY "Users can view their own apps" ON docker_apps
 FOR SELECT USING (auth.uid() = user_id);

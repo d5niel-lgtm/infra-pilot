@@ -6,10 +6,12 @@ import { getAccessToken, setAccessToken } from './lib/auth';
 import { ConfigContext, SetupMode } from './lib/types';
 import { Setup } from './pages/Setup';
 import { Dashboard } from './pages/Dashboard';
+import Customers from './pages/Customers';
 import { AppForm } from './pages/AppForm';
 import { AppDetail } from './pages/AppDetail';
 import { MainLayout } from './components/MainLayout';
 import BrandLogo from '../../branding/BrandLogo';
+import { featureGates } from './lib/types';
 
 export default function App() {
   const [initialized, setInitialized] = useState(false);
@@ -65,15 +67,18 @@ export default function App() {
             <Route path="*" element={<Setup />} />
           ) : !authenticated ? (
             <Route path="*" element={<Navigate to="/setup" replace />} />
-          ) : (
-            <Route element={<MainLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/apps/new" element={<AppForm />} />
-              <Route path="/apps/:appId" element={<AppDetail />} />
-              <Route path="/apps/:appId/edit" element={<AppForm />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Route>
-          )}
+            ) : (
+              <Route element={<MainLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/apps/new" element={<AppForm />} />
+                <Route path="/apps/:appId" element={<AppDetail />} />
+                <Route path="/apps/:appId/edit" element={<AppForm />} />
+                {featureGates.canManageCustomers(mode) && (
+                  <Route path="/customers" element={<Customers />} />
+                )}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Route>
+            )}
         </Routes>
       </BrowserRouter>
       <Toaster />

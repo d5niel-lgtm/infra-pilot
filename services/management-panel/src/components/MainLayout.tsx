@@ -3,9 +3,13 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '../../lib/api';
 import { clearAccessToken } from '../../lib/auth';
 import BrandLogo from '../../../../branding/BrandLogo';
+import { featureGates } from '../lib/types';
+import { useConfig } from '../lib/types';
+import DemoFlagBadge from './DemoFlagBadge';
 
 export const MainLayout = () => {
   const navigate = useNavigate();
+  const { mode } = useConfig();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -37,21 +41,22 @@ export const MainLayout = () => {
               <BrandLogo size={40} />
               <span className="text-xl font-semibold text-slate-900 dark:text-white">Docker Panel</span>
             </div>
-            <div className="flex items-center gap-6">
-              {user && (
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-slate-600 dark:text-slate-300">
-                    {user.display_name || user.email}
-                  </span>
-                  <button
-                    onClick={handleLogout}
-                    className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
+              <div className="flex items-center gap-6">
+                {user && (
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-slate-600 dark:text-slate-300">
+                      {user.display_name || user.email}
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+                    >
+                      Logout
+                    </button>
+                    <DemoFlagBadge />
+                  </div>
+                )}
+              </div>
           </div>
         </div>
       </header>
@@ -72,6 +77,14 @@ export const MainLayout = () => {
             >
               New App
             </button>
+            {featureGates.canManageCustomers(mode) && (
+              <button
+                onClick={() => navigate('/customers')}
+                className="py-3 px-2 border-b-2 border-transparent text-slate-600 dark:text-slate-400 hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
+              >
+                Customers
+              </button>
+            )}
           </nav>
         </div>
       </div>

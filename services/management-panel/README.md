@@ -42,6 +42,41 @@ cp .env.local.example .env.local
 npm install && npm run dev
 ```
 
+### Demo Feature Flag (per-env)
+
+- Gate the Seed Demo UI behind a per-environment feature flag to avoid accidental usage in prod-like environments.
+- Env var: `VITE_DEMO_FEATURE_ENABLED`
+- Default: false (flag is off unless explicitly enabled)
+- How to enable/disable:
+  - Local development: set in your .env.local
+    - Add: `VITE_DEMO_FEATURE_ENABLED=true`
+  - Staging/QA: set to `true` to enable demo flows for testers, or `false` to hide in testing
+  - Production: keep it `false` to avoid accidental seeds
+- Verification:
+  - Start frontend and check that the Seed Demo button appears only when the flag is enabled.
+  - Click Seed Demo to see the confirmation modal before seeding.
+- Notes:
+- This flag gates only the UI; the backend seed endpoints remain available to programmatic use when needed and are still protected by Business Mode.
+
+### QA Checklist (Gating Demo Per-Env)
+- Development (VITE_DEMO_FEATURE_ENABLED=true)
+  - Seed Demo button is visible on the Customers page in Business Mode.
+  - Click Seed Demo to open the confirmation modal; confirm to seed.
+  - Verify the UI shows a success toast with seeded counts and the Customers list refreshes.
+  - Verify the Seed Demo action is not shown when the flag is off.
+- Staging/QA (VITE_DEMO_FEATURE_ENABLED=true or false)
+  - If true, perform the same checks as Development.
+  - If false, Seed Demo button should be hidden; confirm gating works in this environment.
+- Production (VITE_DEMO_FEATURE_ENABLED not set or false)
+  - Seed Demo button must be hidden; UI should reflect no demo button.
+  - Optional: try calling the API directly with a valid token and confirm backend blocks based on Business Mode as designed.
+- Validation steps (end-to-end)
+  - Start both frontend and backend, login as a Business Mode admin, navigate to Customers, ensure gating behavior matches env flag.
+  - Seed Demo idempotence: verify re-clicking Seed Demo (when enabled) does not crash and either updates or leaves data idempotently.
+- Troubleshooting
+  - If Seed Demo button is missing, verify VITE_DEMO_FEATURE_ENABLED is set to true and the frontend is restarted to pick up the env var.
+  - If Seed Demo still seeds in prod-like env, rebuild the frontend to ensure the flag is re-evaluated.
+
 **Then open:** http://localhost:5173
 
 **First-time setup will guide you through:**

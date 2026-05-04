@@ -9,7 +9,10 @@
     "dev:backend": "node --loader ts-node/esm server/index.ts",
     "build": "vite build",
     "lint": "tsc --noEmit --pretty false",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:playwright": "npx playwright test --config playwright.config.ts",
+    "playwright:install": "npx playwright install",
+    "seed:customers": "node ./scripts/seed-customers.mjs"
   },
   "dependencies": {
     "@supabase/auth-helpers-react": "^0.4.6",
@@ -22,7 +25,8 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^6.24.0",
     "sonner": "^2.0.3",
-    "tailwind-merge": "^3.1.0"
+    "tailwind-merge": "^3.1.0",
+    "pg": "^8.9.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
@@ -43,6 +47,8 @@
     "ts-node": "^10.9.2",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0"
   }
 }
