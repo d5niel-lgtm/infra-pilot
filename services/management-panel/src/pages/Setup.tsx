@@ -1,10 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../lib/api';
-import { setAccessToken } from '../../lib/auth';
-import { SetupMode } from '../../lib/types';
+import { apiClient } from '../lib/api';
+import { setAccessToken } from '../lib/auth';
+import { SetupMode } from '../lib/types';
 import { toast } from 'sonner';
-import BrandLogo from '../../../../branding/BrandLogo';
+
+const SimpleLogo = ({ size = 64 }: { size?: number }) => (
+  <div
+    className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-3xl"
+    style={{ width: size, height: size }}
+  >
+    IP
+  </div>
+);
 
 export const Setup = () => {
   const navigate = useNavigate();
@@ -54,7 +62,7 @@ export const Setup = () => {
           {/* Header */}
           <div className="text-center mb-12">
             <div className="flex justify-center mb-6">
-              <BrandLogo size={64} />
+              <SimpleLogo size={64} />
             </div>
             <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
               Welcome to Docker Panel
@@ -125,7 +133,7 @@ export const Setup = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <BrandLogo size={48} />
+            <SimpleLogo size={48} />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
             Create Admin Account

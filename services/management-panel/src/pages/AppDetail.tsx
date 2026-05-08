@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiClient } from '../../lib/api';
-import { DockerApp } from '../../lib/types';
+import { apiClient } from '../lib/api';
+import { DockerApp } from '../lib/types';
 import { toast } from 'sonner';
 
 export const AppDetail = () => {

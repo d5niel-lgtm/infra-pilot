@@ -2,8 +2,6 @@
 
 **Infrastructure Orchestration & Management Platform**
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/DaaanielTV/infra-pilot/ci-core.yml?branch=main)](https://github.com/DaaanielTV/infra-pilot/actions)
-[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)](https://www.python.org/)
 [![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-brightgreen?logo=node.js)](https://nodejs.org/)
 [![Java 8+](https://img.shields.io/badge/Java-8%2B-orange?logo=java)](https://www.oracle.com/java/)

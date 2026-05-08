@@ -10,8 +10,16 @@ import Customers from './pages/Customers';
 import { AppForm } from './pages/AppForm';
 import { AppDetail } from './pages/AppDetail';
 import { MainLayout } from './components/MainLayout';
-import BrandLogo from '../../branding/BrandLogo';
 import { featureGates } from './lib/types';
+
+const SimpleLogo = ({ size = 64 }: { size?: number }) => (
+  <div
+    className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-3xl"
+    style={{ width: size, height: size }}
+  >
+    IP
+  </div>
+);
 
 export default function App() {
   const [initialized, setInitialized] = useState(false);
@@ -50,10 +58,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="text-center">
-          <BrandLogo size={64} />
-          <p className="text-slate-600 dark:text-slate-300 mt-4">Loading...</p>
+          <SimpleLogo size={64} />
+          <p className="text-slate-400 mt-4">Loading...</p>
         </div>
       </div>
     );
