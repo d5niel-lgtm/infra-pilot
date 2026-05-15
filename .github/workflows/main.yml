@@ -1,0 +1,41 @@
+name: Build and Release Minecraft Plugin
+
+on:
+  push:
+    paths:
+      - 'services/service-core/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+
+      - name: Build JAR
+        working-directory: services/service-core
+        run: mvn -B clean package
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: plugin-${{ github.sha }}
+          name: Minecraft Plugin ${{ github.sha }}
+          body: |
+            Automatisch gebaut aus Commit:
+            ${{ github.sha }}
+          files: |
+            services/service-core/target/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
