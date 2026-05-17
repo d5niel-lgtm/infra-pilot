@@ -16,7 +16,12 @@
     "test": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' node --test --loader ts-node/esm tests/**/*.test.ts",
     "test:coverage": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' NODE_V8_COVERAGE=coverage/v8 node --test --experimental-test-coverage --loader ts-node/esm tests/**/*.test.ts",
     "test:api": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' node --test --loader ts-node/esm tests/integration/**/*.test.ts",
-    "test:unit": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' node --test --loader ts-node/esm tests/unit/**/*.test.ts"
+    "test:unit": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' node --test --loader ts-node/esm tests/unit/**/*.test.ts",
+    "desktop:dev": "zig build dev",
+    "desktop:run": "zig build run",
+    "desktop:package": "zig build package",
+    "desktop:validate": "zero-native validate app.zon",
+    "desktop:doctor": "zero-native doctor --manifest app.zon --strict"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.5",

@@ -11,6 +11,7 @@ Welcome to the Infra Pilot Infrastructure Orchestration Platform documentation.
 - [Integration Patterns](architecture/integration-patterns.md)
 
 ### 🚀 Setup & Installation
+- [zero-native Management Panel Shell](desktop/zero-native-management-panel.md) - Native desktop WebView shell for the management panel
 - [Local Development Setup](setup/local-development.md) - Get started locally
 - [Docker Deployment](setup/docker-setup.md) - Using Docker Compose
 - [Kubernetes Deployment](setup/kubernetes-deploy.md) - K8s manifests

@@ -118,6 +118,7 @@ Siehe [docs/setup/local-development.md](docs/setup/local-development.md) für de
 
 - Docker & Docker Compose (empfohlen) - v20.10+
 - Node.js 18+ (für Docker Panel und Discord Service)
+- Zig 0.16.0+ und zero-native CLI (optional, für die native Desktop-Shell des Management Panels)
 - Python 3.9+ (für Orchestrator Agent)
 - Java 8+ (für Service Core)
 - Git
@@ -180,7 +181,7 @@ infra/naming/provider_map.yaml:
 
 | Service | Zweck | Sprache | Port | Status |
 |---------|--------|---------|------|--------|
-| **Management Panel** | Docker Container Management & Dashboard | TypeScript/React + Express | 5173/3001 | Production Ready |
+| **Management Panel** | Docker Container Management & Dashboard, optional native zero-native WebView shell | TypeScript/React + Express + Zig/zero-native shell | 5173/3001 | Production Ready |
 | **Orchestrator Agent** | Zentrale Provisioning & Orchestrierung | Python 3.9+ | 8000 | Production Ready |
 | **Discord Service** | Discord Bot Interface | Node.js | - | Production Ready |
 | **Service Core** | Spielserver & Ressourcenmanagement | Java 8+ | 8080 | Production Ready |
@@ -194,7 +195,7 @@ Siehe [docs/architecture/overview.md](docs/architecture/overview.md) für detail
 ### 1. Management Panel (`services/management-panel/`)
 Modernes Web-basiertes Docker Container Management Interface mit persönlichem und geschäftlichem Modus.
 
-- **Tech Stack:** React 19, TypeScript 5.0+, Tailwind CSS 4, Express.js, Supabase/PostgreSQL
+- **Tech Stack:** React 19, TypeScript 5.0+, Tailwind CSS 4, Express.js, Supabase/PostgreSQL, optional Zig/zero-native desktop shell
 - **Features:**
   - **Personal Mode** (Standard): Vereinfachtes Docker-Management für Einzelnutzer
   - **Business Mode** (Optional): Multi-User, Abrechnung, White-Label, Team-Management
@@ -211,6 +212,15 @@ Modernes Web-basiertes Docker Container Management Interface mit persönlichem u
   npm install
   npm run dev
   ```
+
+- **Native Desktop Shell (zero-native):**
+  ```bash
+  cd services/management-panel
+  npm run dev:backend
+  # In a second terminal, with zero-native checked out locally:
+  npm run desktop:dev -- -Dzero-native-path=/absolute/path/to/zero-native
+  ```
+  Details: [docs/desktop/zero-native-management-panel.md](docs/desktop/zero-native-management-panel.md).
 
 - **Umgebungsvariablen:**
   ```

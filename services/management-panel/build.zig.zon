@@ -1,0 +1,17 @@
+.{
+    .name = .infra_pilot_panel,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{},
+    .paths = .{
+        "app.zon",
+        "build.zig",
+        "build.zig.zon",
+        "native",
+        "dist",
+        "src",
+        "index.html",
+        "package.json",
+        "README.md",
+    },
+}

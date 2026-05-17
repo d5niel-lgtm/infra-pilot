@@ -86,6 +86,27 @@ npm install && npm run dev
 
 ---
 
+
+## 🖥️ Native Desktop Shell (zero-native)
+
+The panel can also run as a zero-native desktop app. The React/Vite UI is loaded into a native WebView, while the Express API remains the local backend on `http://127.0.0.1:3001`.
+
+```bash
+# Terminal 1: API
+npm run dev:backend
+
+# Terminal 2: native shell + Vite managed by zero-native
+npm run desktop:dev -- -Dzero-native-path=/absolute/path/to/zero-native
+```
+
+Useful scripts:
+
+- `npm run desktop:validate` validates `app.zon`.
+- `npm run desktop:doctor` checks the host zero-native environment.
+- `npm run desktop:package -- -Dzero-native-path=/absolute/path/to/zero-native` packages the built `dist/` assets.
+
+See the repository guide at [`../../docs/desktop/zero-native-management-panel.md`](../../docs/desktop/zero-native-management-panel.md).
+
 ## 📚 Documentation
 
 | Document | Topic |

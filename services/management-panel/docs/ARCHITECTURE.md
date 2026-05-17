@@ -102,6 +102,31 @@
 
 ---
 
+## Native Desktop Entry (zero-native)
+
+The management panel has an optional zero-native shell alongside the browser-hosted Vite app:
+
+```
+┌───────────────────────────┐
+│ zero-native Zig shell     │
+│ native/src/main.zig       │
+└────────────┬──────────────┘
+             │ system WebView / zero://app
+             ▼
+┌───────────────────────────┐
+│ React/Vite management UI  │
+│ src/ + dist/              │
+└────────────┬──────────────┘
+             │ HTTP API
+             ▼
+┌───────────────────────────┐
+│ Express API               │
+│ server/index.ts           │
+└───────────────────────────┘
+```
+
+The shell is configured by `app.zon`, loads `dist/index.html` for packaged builds, and uses the Vite dev server when launched through `zero-native dev`. The backend stays as an Express service so Docker control, Supabase/PostgreSQL access, and integration tests keep the same boundaries as the web deployment.
+
 ## Data Flow: Setup & Authentication
 
 ```
