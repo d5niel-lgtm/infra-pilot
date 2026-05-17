@@ -1,0 +1,43 @@
+.{
+    .id = "dev.infra_pilot.management_panel",
+    .name = "infra-pilot-panel",
+    .display_name = "Infra Pilot Panel",
+    .version = "0.0.1",
+    .icons = .{ "native/assets/icon.svg" },
+    .platforms = .{ "macos", "linux", "windows" },
+    .permissions = .{},
+    .capabilities = .{ "webview" },
+    .frontend = .{
+        .dist = "dist",
+        .entry = "index.html",
+        .spa_fallback = true,
+        .dev = .{
+            .url = "http://127.0.0.1:5173/",
+            .command = .{ "npm", "run", "dev:frontend", "--", "--host", "127.0.0.1" },
+            .ready_path = "/",
+            .timeout_ms = 30000,
+        },
+    },
+    .security = .{
+        .navigation = .{
+            .allowed_origins = .{
+                "zero://app",
+                "zero://inline",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3001",
+            },
+            .external_links = .{ .action = "deny" },
+        },
+    },
+    .web_engine = "system",
+    .cef = .{ .dir = "third_party/cef/macos", .auto_install = false },
+    .windows = .{
+        .{
+            .label = "main",
+            .title = "Infra Pilot Panel",
+            .width = 1280,
+            .height = 820,
+            .restore_state = true,
+        },
+    },
+}
