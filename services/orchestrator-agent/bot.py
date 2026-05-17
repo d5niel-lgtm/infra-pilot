@@ -166,7 +166,7 @@ async def earncredit(interaction: discord.Interaction):
     response = requests.get(api_url).json()
     response_status = response.get('url', {}).get('status')
     has_short_link = bool(response.get('url', {}).get('shortLink'))
-    print(f"API response received (status={response_status}, has_short_link={has_short_link})")
+    print("API response received from cutt.ly endpoint")
 
     if response['url']['status'] == 7:
         shortened_url = response['url']['shortLink']
