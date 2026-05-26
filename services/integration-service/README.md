@@ -89,7 +89,7 @@ src/
 ├── commands.py               # Cross-platform commands (CommandExecutor)
 ├── events.py                 # Event broadcasting (EventBroadcaster)
 ├── integration.py            # Integration service startup/hooks
-├── logging.py                # Unified logging (UnifiedLogger)
+├── logging.py                # Unified logging (UnifiedLogger) with paginated log search API
 ├── messaging.py              # Message bridge Discord↔Minecraft (MessageBridge)
 ├── notification_providers.py # Notification providers: Email, Webhook, Telegram + NotificationManager
 ├── permissions.py            # Permission system (PermissionManager)
@@ -116,6 +116,12 @@ src/
 - `POST /api/auth/oauth2/{platform}` - OAuth2 authorize
 - `POST /api/auth/oauth2/{platform}/callback` - OAuth2 callback
 - `POST /api/auth/token-exchange` - Exchange platform token
+- `POST /api/auth/2fa/setup` - Start TOTP setup (returns QR code secret)
+- `POST /api/auth/2fa/verify-setup` - Verify initial TOTP setup, enable 2FA
+- `POST /api/auth/2fa/verify` - Verify TOTP during login (temp_token → JWT)
+- `POST /api/auth/2fa/disable` - Disable 2FA (requires password)
+- `GET /api/auth/2fa/backup-codes` - Get backup codes
+- `POST /api/auth/2fa/verify-backup` - Verify backup code, bypass TOTP
 
 ### Users
 - `POST /api/users` - Create user
@@ -168,6 +174,10 @@ src/
 - `DELETE /api/announcements/{announcement_id}` - Cancel
 - `POST /api/announcements/templates` - Create template
 - `GET /api/announcements/templates` - Get templates
+
+### Modpacks
+- `GET /api/modpacks/search?query=&platform=curseforge|modrinth` - Search modpacks across CurseForge and Modrinth
+- `GET /api/modpacks/{platform}/{id}` - Get modpack details with version manifest
 
 ### Metrics
 - `GET /api/metrics` - Get metrics

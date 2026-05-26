@@ -34,6 +34,17 @@ Infra Pilot bündelt mehrere Services und Hilfsbibliotheken, um Container-/Game-
 - ✅ **Onboarding Wizard:** 5-schrittige geführte Tour nach der Ersteinrichtung.
 - ✅ **Mobile-Responsive Layout:** Hamburger-Menü, Slide-In-Sidebar für Mobilgeräte.
 - ✅ **Web Terminal:** In-Browser-Container-Terminal via WebSocket + Docker exec.
+- ✅ **Modpack-Installer** — One-click modpack install from CurseForge/Modrinth (Orchestrator cog, Management Panel UI, Integration API)
+- ✅ **Discord Token Validation** — Validate bot token before container start (Management Panel endpoint + UI, Orchestrator Python util)
+- ✅ **Config Editor** — In-browser YAML/JSON config editor with syntax highlighting (Management Panel component, backend endpoints)
+- ✅ **MySQL Database per Click** — Instant MySQL container provisioning (Orchestrator cog, Management Panel UI + API)
+- ✅ **Java Version Selector** — Switch between Java 8/11/17/21 per server (Management Panel form + presets)
+- ✅ **2FA (TOTP)** — Two-factor authentication via TOTP (Integration Service auth, Management Panel setup UI, Settings)
+- ✅ **Git Deployment Webhook** — Auto-deploy on GitHub push (Orchestrator cog + webhook server, Management Panel UI, Discord notification)
+- ✅ **Cronjob Scheduler** — Scheduled tasks (restart/command/backup) via cron expressions (Orchestrator cog, Management Panel UI + API)
+- ✅ **Real-time Resource Graphs** — Live CPU/memory/disk gauges + sparklines, Netdata/Grafana integration (Management Panel component + backend metrics)
+- ✅ **Log Search** — Full-text log search with filters, pagination, highlighting (Management Panel LiveLogs upgrade, Integration Service search API)
+- ✅ **Prepaid Billing** — Pay-as-you-go balance system with top-ups, cost calculator, transaction history (Orchestrator cog, Management Panel page + API)
 - ⚠️ **Docker Compose:** `docker-compose.yml` ist als Stack-Scaffold vorhanden. Aktuell besitzt nur `services/orchestrator-agent/` ein Dockerfile; die Compose-Definitionen für Management Panel, Discord Service, Service Core und Monitoring benötigen vor einem vollständigen Stack-Start noch Dockerfiles bzw. Infrastrukturdateien.
 - ⚠️ **Kubernetes/Terraform:** Die README verweist nicht mehr auf produktionsfertige K8s-/Terraform-Manifeste, weil entsprechende `infrastructure/`-Dateien derzeit nicht im Repository enthalten sind.
 
@@ -109,10 +120,10 @@ Weitere Details: [Discord Service README](services/discord-service/README.md).
 ├── infra/naming/                     # Provider-neutrale Token-Auflösung
 ├── scripts/                          # Setup-, Test-, Coverage- und Build-Hilfen
 ├── services/
-│   ├── management-panel/             # React/Vite + Express Docker Panel (Pages: Monitoring, Backups, Reports, Settings, AccessLogs)
-│   ├── orchestrator-agent/           # Python Provisioning-/Discord-Agent (25+ Cogs: scaling, backup, health, security, DNS, SSL, …)
-│   ├── discord-service/              # Discord.js Bot Service (20+ Module: tickets, polling, logging, moderation, …)
-│   ├── integration-service/          # Cross-Plattform-Hub (Auth, Events, Messaging, Permissions, Users, …)
+│   ├── management-panel/             # React/Vite + Express Docker Panel (Pages: Monitoring, Backups, Reports, Settings, AccessLogs, Billing, …)
+│   ├── orchestrator-agent/           # Python Provisioning-/Discord-Agent (35 Cogs: scaling, backup, health, security, DNS, SSL, database, deploy, cron, modpack, billing, …)
+│   ├── discord-service/              # Discord.js Bot Service (20+ Module: tickets, polling, logging, moderation, token validation, …)
+│   ├── integration-service/          # Cross-Plattform-Hub (Auth, 2FA/TOTP, Events, Messaging, Permissions, Users, Modpacks, Log Search, …)
 │   └── service-core/                 # Java/Maven Minecraft-Plugin (Features: economy, worlds, stats, items, gameplay, server, community)
 ├── tests/                            # Repo-weite Unit-/Integration-/Smoke-Tests
 └── docs/                             # Projekt-, Architektur-, Testing- und Operations-Doku
@@ -127,8 +138,8 @@ Modernes Docker-Management-Panel für Self-Hoster und Hosting-Workflows.
 - **Stack:** React 19, TypeScript, Vite, Tailwind CSS, Express.js, Supabase/PostgreSQL, WebSocket (ws).
 - **Modi:** Personal Mode als Standard, Business Mode für Kunden-, Plan- und Demo-Datenflüsse.
 - **Features:** App-/Container-CRUD, Logs, Ressourcenlimits, Setup-Flow, Seed Demo Feature Gate, optionale zero-native Desktop-Shell.
-- **Dashboards/Seiten:** Dashboard, AppDetail, AppForm, Monitoring, AccessLogs, Backups, Reports, Settings, **AuditLog**, Customers.
-- **Real-Time:** WebSocket-Server für Live-Container-Logs (`docker logs -f`) und Metrik-Streaming (`docker stats`, 2s-Intervall).
+- **Dashboards/Seiten:** Dashboard, AppDetail, AppForm, Monitoring, AccessLogs, Backups, Reports, Settings, **AuditLog**, Customers, **Billing**, **ConfigEditor**, **CronJobManager**, **DatabaseManager**, **GitDeployManager**, **RealtimeMetrics**, **ModpackBrowser**, **TwoFactorSetup**.
+- **Real-Time:** WebSocket-Server für Live-Container-Logs (`docker logs -f`) und Metrik-Streaming (`docker stats`, 2s-Intervall). Live-CPU/Memory/Disk-Gauges mit Sparklines und Netdata/Grafana-Integration.
 - **Globale Suche:** Cmd+K-Palette mit Echtzeit-Suche über Apps, Backups und Audit-Logs.
 - **Audit Trail:** Append-Only-Log aller Mutationen mit Timeline-Viewer und Filterung.
 - **Benachrichtigungen:** Verwaltung von Email-/Webhook-/Telegram-Kanälen mit Testversand.
@@ -137,6 +148,17 @@ Modernes Docker-Management-Panel für Self-Hoster und Hosting-Workflows.
 - **Onboarding:** Geführte 5-Schritt-Tour nach Ersteinrichtung.
 - **Theme Persistenz:** Dark/Light-Mode wird in localStorage gespeichert.
 - **Mobile-Responsive:** Hamburger-Menü und Slide-In-Sidebar.
+- **Config Editor:** YAML/JSON-Editor mit Syntax-Highlighting im Browser (CodeMirror-basiert).
+- **Java Version Selector:** Auswahl zwischen Java 8/11/17/21 pro Server über UI-Formular.
+- **MySQL Database per Click:** Ein-Klick-Provisionsierung von MySQL-Containern über UI + API.
+- **Git Deployment Webhook:** Auto-Deploy bei GitHub-Push mit Webhook-Server und Discord-Benachrichtigung.
+- **Cronjob Scheduler:** Geplante Tasks (Restart/Command/Backup) über Cron-Ausdrücke.
+- **Real-time Resource Graphs:** Live-CPU/Memory/Disk-Gauges mit Sparklines, Netdata/Grafana-Integration.
+- **Log Search:** Volltext-Logsuche mit Filtern, Paginierung und Highlighting.
+- **Prepaid Billing:** Pay-as-you-go-Guthabensystem mit Aufladungen, Kostenrechner und Transaktionshistorie.
+- **Discord Token Validation:** Bot-Token-Validierung vor Container-Start.
+- **Modpack-Installer:** Ein-Klick-Modpack-Installation von CurseForge/Modrinth.
+- **2FA (TOTP):** Zwei-Faktor-Authentifizierung über TOTP mit Setup-UI und Backup-Codes.
 - **Wichtige Skripte:**
   - `npm run dev` startet Frontend und Backend parallel.
   - `npm run dev:frontend` startet nur Vite.
@@ -150,8 +172,8 @@ Python-basierte Provisioning- und Orchestrierungslogik.
 
 - **Stack:** Python 3.9+, Discord.py/aiohttp-Umfeld laut Requirements.
 - **Features:** VPS-Management, Billing-/Pricing-Cogs, Ressourcenmonitoring, Integration Hooks.
-- **Cogs (29):** alert_manager, auto_scaling, backup_manager, benchmark, bot_commands, cleanup, clone_system, cost_optimizer, cost_prediction, dns_manager, health_checks, load_balancer, monitoring, network_monitor, performance_optimizer, quota_manager, recovery, resource_manager, security_audit, server_migration, snapshot_system, ssl_manager, template_manager, traffic_analysis, troubleshoot, update_manager, vps_billing, vps_commands, vps_pricing.
-- **Einstiegspunkt:** `main.py` lädt alle 29 Cogs. `bot.py` und `b2.py` sind Legacy-Dateien (deprecated), die nur noch als Referenz dienen.
+- **Cogs (35):** alert_manager, auto_scaling, backup_manager, benchmark, bot_commands, cleanup, clone_system, cost_optimizer, cost_prediction, **cron_scheduler**, **database_manager**, dns_manager, **git_deploy**, health_checks, load_balancer, **modpack_installer**, monitoring, network_monitor, performance_optimizer, **prepaid_billing**, quota_manager, recovery, resource_manager, security_audit, server_migration, snapshot_system, ssl_manager, template_manager, traffic_analysis, troubleshoot, update_manager, vps_billing, vps_commands, vps_pricing.
+- **Einstiegspunkt:** `main.py` lädt alle 35 Cogs. `bot.py` und `b2.py` sind Legacy-Dateien (deprecated), die nur noch als Referenz dienen.
 - **Docker:** Enthält aktuell ein Dockerfile und ist damit der einzige Service, der im Repository direkt als Image gebaut werden kann.
 
 ### Discord Service (`services/discord-service/`)
@@ -161,6 +183,8 @@ Discord.js-Service für Pterodactyl-nahe Server-Erstellungsflüsse.
 - **Stack:** Node.js 18+, CommonJS, Discord.js/Axios/Dotenv (package.json jetzt vorhanden).
 - **Features:** `/server create`-Flow, Pterodactyl-User-/Server-Erstellung, Rollen-/Limit-Konfiguration.
 - **Module (28, alle verdrahtet):** activityTracker, advancedTicketSystem, categoryManager, channelCleanup, customCommands, dashboard, economyCommands, eventScheduler, messageArchive, messageFilter, messageLogger, messageScheduler, pollCreator, prefixSettings, roleHierarchy, roleManager, serverStatus, statsCommands, statsGraphs, tempVoiceChannels, ticketCommands, ticketSystem, topicRotation, verificationLevels, verificationSystem, voiceManager, warningSystem, welcomeMessages.
+- **Token Validation:** Bot-Token-Validierungs-Utility prüft `DISCORD_TOKEN` vor Service-Start.
+- **Git Deployment Notification:** Empfängt und leitet Git-Deployment-Benachrichtigungen vom Orchestrator weiter.
 - **Konfiguration:** siehe `services/discord-service/.env.example`.
 
 ### Integration Service (`services/integration-service/`)
@@ -168,7 +192,10 @@ Discord.js-Service für Pterodactyl-nahe Server-Erstellungsflüsse.
 Python-basierter Cross-Plattform-Hub für serviceübergreifende Kommunikation.
 
 - **Stack:** Python 3.9+, aiohttp.
-- **Module:** alerts, announcements, api, auth, backup, commands, events, integration, logging, messaging, **notification_providers**, permissions, resource_tracker, users.
+- **Module:** alerts, announcements, api, auth, **auth_2fa**, backup, commands, events, integration, logging, messaging, **modpacks**, **notification_providers**, permissions, resource_tracker, users.
+- **2FA/TOTP:** Vollständiger TOTP-Authentifizierungs-Flow (Setup, Verify, Disable, Backup-Codes).
+- **Modpack Search:** CurseForge/Modrinth-Suche und -Details über einheitliche API.
+- **Log Search:** Erweiterte Volltext-Logsuche mit Paginierung und Filterung.
 - **Notification Providers:** Email (SMTP mit TLS), Webhook (HTTP POST mit konfigurierbaren Headern), Telegram (Bot API) – alle über einen zentralen `NotificationManager` orchestriert.
 - **Aufgabe:** Zentraler Nerv des Gesamtsystems – verbindet Discord-Bot, Minecraft-Plugin, Orchestrator und Management Panel über eine einheitliche API.
 

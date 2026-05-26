@@ -45,6 +45,27 @@
 - **Cost optimization** - `/costoptimize` - Analyze usage vs allocation, suggest savings
 - **Traffic analysis** - `/traffic` - Bandwidth breakdown, peak analysis
 
+#### Database Management
+- **MySQL provisioning** - `/database create/list/delete/info` - On-demand MySQL container provisioning with automatic configuration
+
+#### Git Deployment
+- **Git deployment** - `/deploy create/list/delete/toggle/logs` - Automated deployments from GitHub webhooks
+- **Webhook server** - Listens on port 8500 for GitHub push events, triggers auto-deploy
+
+#### Task Scheduler
+- **Cron scheduler** - `/cron` - Cron-based scheduled task execution (restart/command/backup) with 30s check interval
+
+#### Modpack Installer
+- **Modpack search** - `/modpack search` - Search modpacks from CurseForge and Modrinth
+- **Modpack install** - `/modpack install` - One-click modpack installation with dependency resolution
+
+#### Prepaid Billing
+- **Balance check** - `/balance` - View current credit balance
+- **Balance top-up** - `/balance add` - Add credits to user balance
+- **Transaction history** - `/balance history` - View transaction history
+- **Cost estimation** - `/balance cost` - Calculate estimated costs for a server configuration
+- **Hourly billing loop** - Background task that deducts usage costs every hour
+
 ## Quick Start
 
 ```bash
@@ -62,6 +83,7 @@ All configurable values are in `config.py` (loaded via environment variables):
 - `CUTTLY_API_KEY` - URL shortening API key
 - `PUBLIC_IP` - Server public IP
 - `SSL_EMAIL` - Email for Let's Encrypt
+- `DISCORD_TOKEN_VALIDATION` - Enable/disable Discord token validation on startup
 
 ## Architecture
 
@@ -70,7 +92,7 @@ All configurable values are in `config.py` (loaded via environment variables):
 - `vps_manager.py` - Docker SDK-based VPS management
 - `integration.py` - MySQL and REST integration helpers
 - `resource_monitor.py` - System/container stats collection
-- `cogs/*.py` - Discord command cogs (29 total)
+- `cogs/*.py` - Discord command cogs (35 total)
 
 ## Database Tables
 

@@ -144,6 +144,17 @@ See the repository guide at [`../../docs/desktop/zero-native-management-panel.md
 - Alert configuration (metric thresholds) and alert history
 - Maintenance window scheduling
 - Config version control with snapshot and rollback
+- Config Editor — In-browser YAML/JSON config editor with syntax highlighting
+- Java Version Selector — Switch between Java 8/11/17/21 per server
+- MySQL Database per Click — Instant MySQL container provisioning
+- Git Deployment Webhook — Auto-deploy on GitHub push
+- Cronjob Scheduler — Scheduled tasks via cron expressions
+- Real-time Resource Graphs — Live CPU/memory/disk gauges with sparklines
+- Log Search — Full-text log search with filters and pagination
+- Prepaid Billing — Pay-as-you-go balance system with transaction history
+- Modpack-Installer — One-click modpack install from CurseForge/Modrinth
+- 2FA (TOTP) — Two-factor authentication via TOTP
+- Discord Token Validation — Validate bot token before container start
 
 ### Business Mode (Roadmap) 🔜
 - Customer accounts and management
@@ -174,8 +185,8 @@ See the repository guide at [`../../docs/desktop/zero-native-management-panel.md
 ```
 services/management-panel/
 ├── src/
-│   ├── pages/           # Setup, Dashboard, AppForm, AppDetail, Monitoring, AccessLogs, Backups, Reports, Settings, AuditLog
-│   ├── components/      # MainLayout, Sidebar, NavBar, OnboardingWizard, GlobalSearch, WebTerminal, shared/monitoring/backup/alert components
+│   ├── pages/           # Setup, Dashboard, AppForm, AppDetail, Monitoring, AccessLogs, Backups, Reports, Settings, AuditLog, Billing
+│   ├── components/      # MainLayout, Sidebar, NavBar, OnboardingWizard, GlobalSearch, WebTerminal, ConfigEditor, CronJobManager, DatabaseManager, GitDeployManager, RealtimeMetrics, MetricsConfig, BillingDashboard, ModpackBrowser, TwoFactorSetup, shared/monitoring/backup/alert components
 │   ├── lib/             # API client, auth, types, feature gates
 │   ├── App.tsx          # Main router and mode provider
 │   ├── main.tsx         # React entry point (includes PWA service worker registration)
@@ -281,6 +292,65 @@ GET    /api/logs/access                    Access logs (paginated)
 GET    /api/apps/:appId/config-versions    Config version history
 POST   /api/apps/:appId/config-versions    Create config snapshot
 POST   /api/apps/:appId/config-versions/:version/rollback  Rollback to version
+
+### Config Editor
+```
+GET    /api/apps/:appId/config              Get app config (YAML/JSON)
+POST   /api/apps/:appId/config              Update app config
+GET    /config/read                         Read config file from disk
+POST   /config/write                        Write config file to disk
+POST   /config/validate                     Validate YAML/JSON syntax
+```
+
+### Databases
+```
+GET    /api/databases                       List MySQL databases
+POST   /api/databases                       Provision a new MySQL container
+DELETE /api/databases/:id                   Remove a MySQL database
+```
+
+### Billing
+```
+GET    /api/billing/balance                 Get current credit balance
+POST   /api/billing/topup                   Add credits to balance
+GET    /api/billing/transactions            Transaction history
+GET    /api/billing/cost-estimate           Estimate cost for a configuration
+GET    /api/billing/rates                   Current billing rates
+```
+
+### Modpack Installer
+```
+GET    /api/modpacks/search                 Search modpacks (?query=&platform=)
+POST   /api/apps/:appId/modpacks/install    Install modpack on server
+```
+
+### Validation
+```
+POST   /api/validate/discord-token          Validate Discord bot token
+```
+
+### Deployments
+```
+GET    /api/deployments                     List deployments
+POST   /api/deployments                     Create deployment
+DELETE /api/deployments/:id                 Delete deployment
+PATCH  /api/deployments/:id/toggle          Toggle deployment active/inactive
+```
+
+### Real-Time Metrics
+```
+GET    /api/metrics/realtime                Live CPU/memory/disk metrics
+GET    /api/metrics/history                 Historical metric data
+GET    /api/metrics/stream/config           Configure streaming metrics
+GET    /api/metrics/grafana-url             Get Grafana dashboard URL
+```
+
+### Scheduled Tasks
+```
+GET    /api/scheduled-tasks                 List scheduled tasks
+POST   /api/scheduled-tasks                 Create scheduled task
+PATCH  /api/scheduled-tasks/:id             Update scheduled task
+DELETE /api/scheduled-tasks/:id             Delete scheduled task
 ```
 
 ### Maintenance Windows
@@ -475,6 +545,19 @@ Real-time monitoring is handled via:
 - [ ] Multi-region support
 - [ ] Advanced analytics dashboard
 - [ ] Kubernetes mode
+
+### Phase 6 ✅ New Features
+- [x] Config Editor (in-browser YAML/JSON with syntax highlighting)
+- [x] Java Version Selector (8/11/17/21 per server)
+- [x] MySQL Database per Click (instant container provisioning)
+- [x] Git Deployment Webhook (auto-deploy on GitHub push)
+- [x] Cronjob Scheduler (cron-based scheduled tasks)
+- [x] Real-time Resource Graphs (live gauges + sparklines)
+- [x] Log Search (full-text search with filters & pagination)
+- [x] Prepaid Billing (pay-as-you-go balance system)
+- [x] Modpack-Installer (one-click CurseForge/Modrinth install)
+- [x] 2FA (TOTP) (two-factor authentication)
+- [x] Discord Token Validation (validate bot token before start)
 
 ---
 

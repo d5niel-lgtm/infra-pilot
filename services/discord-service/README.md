@@ -29,6 +29,8 @@ The bot now ships with a `package.json` declaring all dependencies.
 - **Server status widgets** — Live system info (CPU, RAM, uptime) with auto-refresh.
 - **Stats graphs** — Visual server statistics with generated charts.
 - **Dashboard** — Interactive system dashboard with refresh support.
+- **Token Validation** — Validates `DISCORD_TOKEN` via Management Panel endpoint before container start to prevent silent runtime failures.
+- **Git Push Notifications** — Receives deployment webhook events from the Orchestrator and posts status updates (deploy started, completed, failed) to Discord channels.
 
 ## Prerequisites
 
