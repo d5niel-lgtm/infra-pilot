@@ -830,6 +830,26 @@ async function registerCommands() {
       ]
     },
     {
+      name: 'statsgraph',
+      description: 'View server statistics graphs',
+      type: 1,
+      options: [
+        {
+          name: 'members',
+          description: 'Show member growth chart (30 days)',
+          type: 1
+        },
+        {
+          name: 'messages',
+          description: 'Show message volume chart',
+          type: 1,
+          options: [
+            { name: 'channel', description: 'Channel to analyze', type: 7, required: false }
+          ]
+        }
+      ]
+    },
+    {
       name: 'verifylevel',
       description: 'User verification levels',
       type: 1,
@@ -943,6 +963,7 @@ client.on('interactionCreate', async (interaction) => {
     messageArchive.handleCommand(interaction);
     categoryManager.handleCommand(interaction);
     verificationLevels.handleCommand(interaction);
+    statsGraphs.handleCommand(interaction);
 
     if (interaction.commandName === 'dashboard') {
       dashboard.handleDashboardCommand(interaction);

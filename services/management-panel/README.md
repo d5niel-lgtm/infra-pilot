@@ -13,11 +13,17 @@
 
 ### ✨ Personal Mode (Default)
 - 🐳 **Docker App Management** - Create, deploy, and manage containerized applications
-- 🎛️ **Container Controls** - Start/stop/restart with one click
-- 📊 **Dashboard** - Real-time status and metrics
-- 🔍 **Logs & Monitoring** - Stream application logs and view status
+- 🎛️ **Container Controls** - Start/stop/restart via real Docker API calls
+- 📊 **Dashboard** - Real-time status and metrics with live WebSocket updates
+- 🔍 **Logs & Monitoring** - Stream application logs via WebSocket in real-time
 - ⚙️ **Configuration** - Port mapping, environment variables, volume mounts
-- 🔐 **Simple Auth** - Single admin account
+- 🔐 **Simple Auth** - Single admin account with rate-limited login
+- 📋 **Audit Trail** - Append-only log of all mutations with timeline viewer
+- 🔎 **Global Search** - Cmd+K palette to search apps, backups, and audit logs
+- 🖥️ **Web Terminal** - In-browser container shell via WebSocket + Docker exec
+- 📬 **Notification Channels** - Email, webhook, and Telegram alert delivery
+- 📱 **PWA Support** - Installable as desktop app with offline caching
+- 🎉 **Onboarding Wizard** - Guided 5-step tour after first-time setup
 
 ### 🚀 Business Mode (Optional)
 - ✅ All Personal Mode features +
@@ -25,7 +31,7 @@
 - 💰 Plans and pricing tiers
 - 🏷️ White-label branding
 - 👔 Team and staff management
-- 📋 Audit logging
+- 📋 Audit logging (Business Mode extension)
 
 ---
 
@@ -168,16 +174,21 @@ See the repository guide at [`../../docs/desktop/zero-native-management-panel.md
 ```
 services/management-panel/
 ├── src/
-│   ├── pages/           # Setup, Dashboard, AppForm, AppDetail, Monitoring, AccessLogs, Backups, Reports, Settings
-│   ├── components/      # MainLayout, shared components, monitoring/backup/alert components
+│   ├── pages/           # Setup, Dashboard, AppForm, AppDetail, Monitoring, AccessLogs, Backups, Reports, Settings, AuditLog
+│   ├── components/      # MainLayout, Sidebar, NavBar, OnboardingWizard, GlobalSearch, WebTerminal, shared/monitoring/backup/alert components
 │   ├── lib/             # API client, auth, types, feature gates
 │   ├── App.tsx          # Main router and mode provider
-│   └── main.tsx         # React entry point
+│   ├── main.tsx         # React entry point (includes PWA service worker registration)
+│   └── ThemeToggle.tsx  # Dark/light mode with localStorage persistence
 ├── server/
-│   ├── index.ts         # Express API (1142 lines, 60+ routes)
-│   └── presets.ts       # Server preset definitions
+│   ├── index.ts         # Express API (WebSocket server, 70+ routes)
+│   ├── presets.ts       # Server preset definitions
+│   └── openapi.ts       # OpenAPI 3.1 specification
+├── public/
+│   ├── manifest.json    # PWA manifest
+│   └── sw.js            # Service worker (cache-first strategy)
 ├── db/
-│   └── schema.sql       # PostgreSQL schema with RLS (server_metrics, access_logs, config_versions, maintenance_windows, backup_jobs, backup_status, alert_configs, alert_history, health_checks)
+│   └── schema.sql       # PostgreSQL schema with RLS (16+ tables including audit_log, notification_channels)
 ├── docs/
 │   ├── PERSONAL_MODE.md # Mode architecture
 │   ├── DATABASE_SETUP.md # Setup guide
@@ -187,7 +198,7 @@ services/management-panel/
 │   ├── unit/             # Unit tests (auth-storage)
 │   ├── integration/      # API integration tests (api, rate-limit)
 │   └── playwright/       # Playwright E2E browser tests
-├── package.json         # Dependencies
+├── package.json         # Dependencies (includes ws dependency)
 ├── vite.config.ts       # Frontend build config
 └── tsconfig.json        # TypeScript config
 ```
@@ -196,40 +207,72 @@ services/management-panel/
 
 ## 🔌 API Reference
 
+### Interactive Docs
+```
+GET    /api/docs                          Swagger UI (browser)
+GET    /api/openapi.json                  OpenAPI 3.1 spec (JSON)
+```
+
 ### Setup
 ```
-GET  /api/setup/status              Check if initialized
-POST /api/setup/init                Initialize with admin + mode
+GET    /api/setup/status                  Check if initialized
+POST   /api/setup/init                    Initialize with admin + mode (rate-limited: 10 req/15min)
 ```
 
 ### Docker Apps
 ```
-GET    /api/apps                    List user's apps
-POST   /api/apps                    Create new app
-GET    /api/apps/:appId             Get app details
-PATCH  /api/apps/:appId             Update app settings
-DELETE /api/apps/:appId             Delete app
+GET    /api/apps                          List user's apps
+POST   /api/apps                          Create new app
+GET    /api/apps/:appId                   Get app details
+PATCH  /api/apps/:appId                   Update app settings
+DELETE /api/apps/:appId                   Delete app
 ```
 
-### Container Control
+### Container Control (Real Docker exec)
 ```
-POST   /api/apps/:appId/start       Start container
-POST   /api/apps/:appId/stop        Stop container
-POST   /api/apps/:appId/restart     Restart container
-GET    /api/apps/:appId/logs        Get logs (paginated)
+POST   /api/apps/:appId/start             Start container via `docker start`
+POST   /api/apps/:appId/stop              Stop container via `docker stop`
+POST   /api/apps/:appId/restart           Restart container via `docker restart`
+GET    /api/apps/:appId/logs              Get logs (paginated)
+```
+
+### WebSocket Real-Time
+```
+ws://host:3001?appId=<id>                 WebSocket connection for live logs & metrics
+  → {"type":"subscribe","appId":"<id>"}         Starts docker logs -f streaming
+  → {"type":"subscribe:metrics","appId":"<id>"} Starts docker stats every 2s
 ```
 
 ### User & Config
 ```
-GET    /api/user                    Current user profile
-GET    /api/config/mode             Get mode (personal/business)
-GET    /health                      API health check
+GET    /api/user                          Current user profile
+GET    /api/config/mode                   Get mode (personal/business)
+GET    /health                            API health check
 ```
 
 ### Monitoring & Metrics
 ```
 GET    /api/apps/:appId/metrics            Server metrics (TPS, CPU, memory, players) with time range
 GET    /api/metrics/aggregated             Aggregated metrics across all apps
+```
+
+### Audit Trail
+```
+GET    /api/audit-log                     Paginated audit log (?user_id=&entity_type=&action=&start_date=&end_date=)
+```
+
+### Global Search
+```
+GET    /api/search?q=<query>              Search apps, backups, and audit logs (min 2 chars)
+```
+
+### Notification Channels
+```
+GET    /api/notification-channels          List notification channels
+POST   /api/notification-channels          Create channel (type: email|webhook|telegram, config: JSON)
+PATCH  /api/notification-channels/:id      Update channel
+DELETE /api/notification-channels/:id      Delete channel
+POST   /api/notification-channels/:id/test Send test notification
 ```
 
 ### Access Logs & Config Versions
@@ -275,6 +318,15 @@ GET    /api/health-checks                  Health check results (optional ?app_i
 ```
 GET    /api/reports                        Generate report (optional start_date, end_date)
 GET    /api/reports/export                 Export report (?format=csv|pdf)
+```
+
+### Customers (Business Mode)
+```
+GET    /api/customers                      List customers
+POST   /api/customers                      Create customer
+PATCH  /api/customers/:customerId          Update customer
+DELETE /api/customers/:customerId          Delete customer
+POST   /api/seed-demo                      Seed demo data (Business Mode only)
 ```
 
 ---
@@ -348,9 +400,11 @@ npm run preview
 
 ## 🐳 Docker Integration
 
-The panel stores app configurations and manages container state via Supabase. Docker API integration for live container operations (start/stop/restart) is wired through the backend with Dockerode available for socket-level control.
+The panel manages Docker containers via direct `docker` CLI calls (start/stop/restart through `child_process.exec`). Container configurations are stored in PostgreSQL via Supabase with full RLS enforcement.
 
 Real-time monitoring is handled via:
+- **WebSocket live streaming** - `docker logs -f` and `docker stats --no-stream` pushed to browser in real-time
+- **Web Terminal** - In-browser shell via WebSocket + `docker exec`
 - **Server metrics** - TPS, CPU, memory, player count, lag spike detection
 - **Health checks** - HTTP ping, port checks with uptime/degraded/down status
 - **Backup system** - Scheduled backup jobs with retention and status tracking
@@ -385,14 +439,7 @@ Real-time monitoring is handled via:
 - [x] Feature gates framework
 - [x] Comprehensive documentation
 
-### Phase 2 ⏳ Business Mode
-- [ ] Customer management
-- [ ] Plans/pricing UI
-- [ ] Billing integration hooks
-- [ ] Audit logging
-- [ ] Team management
-
-### Phase 3 ✅ Monitoring & Operations
+### Phase 2 ✅ Monitoring & Operations
 - [x] Server metrics collection (TPS, CPU, memory, players)
 - [x] Health check dashboard with uptime tracking
 - [x] Backup job automation and scheduling
@@ -401,15 +448,33 @@ Real-time monitoring is handled via:
 - [x] Maintenance window scheduling
 - [x] Config version control with rollback
 - [x] Reports generation with CSV/PDF export
-- [ ] Live container creation (Dockerode integration)
-- [ ] Real-time status (WebSocket)
-- [ ] Image pull workflows
+- [x] Real Docker calls (docker exec for start/stop/restart)
+- [x] Real-time WebSocket for live logs & metrics
+- [x] Rate-limited login (10 req/15min)
 
-### Phase 4 ⏳ Advanced
-- [ ] White-label system
+### Phase 3 ✅ UX & Platform
+- [x] Theme persistence (localStorage dark/light mode)
+- [x] Onboarding wizard (5-step tour)
+- [x] PWA support (manifest + service worker)
+- [x] Mobile-responsive layout (hamburger menu)
+- [x] Global search (Cmd+K palette)
+- [x] Audit trail with timeline viewer
+- [x] Web terminal (in-browser container shell)
+- [x] Notification channels (email, webhook, Telegram)
+- [x] OpenAPI/Swagger docs at /api/docs
+
+### Phase 4 ⏳ Business Mode
+- [ ] Customer management
+- [ ] Plans/pricing UI
+- [ ] Billing integration hooks
+- [ ] Team management
 - [ ] Multi-tenant RBAC
+
+### Phase 5 ⏳ Advanced
+- [ ] White-label system
 - [ ] Multi-region support
 - [ ] Advanced analytics dashboard
+- [ ] Kubernetes mode
 
 ---
 

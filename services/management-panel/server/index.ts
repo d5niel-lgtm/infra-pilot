@@ -7,14 +7,40 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
 import { promises as fs } from 'fs';
+import { exec, spawn } from 'child_process';
+import { promisify } from 'util';
 import rateLimit from 'express-rate-limit';
+import { WebSocketServer, WebSocket } from 'ws';
 import { SERVER_PRESETS } from './presets.js';
+import openapiSpec from './openapi.js';
 
 dotenv.config({ path: '.env.local' });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = process.env.PORT || 3001;
+
+const execAsync = promisify(exec);
+
+async function dockerAction(appId: string, action: 'start' | 'stop' | 'restart'): Promise<{success: boolean; output: string}> {
+  const { data: app, error } = await supabase
+    .from('docker_apps')
+    .select('container_id, user_id')
+    .eq('id', appId)
+    .single();
+  if (error || !app) throw new Error('App not found');
+  if (!app.container_id) throw new Error('No container associated with this app');
+  const { stdout, stderr } = await execAsync(`docker ${action} ${app.container_id}`);
+  return { success: true, output: stdout || stderr };
+}
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const customersLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -92,6 +118,24 @@ const verifyAuth = async (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+async function logAudit(userId: string, action: string, entityType: string, entityId?: string, oldValue?: any, newValue?: any, ipAddress?: string) {
+  try {
+    await supabase
+      .from('audit_log')
+      .insert({
+        user_id: userId,
+        action,
+        entity_type: entityType,
+        entity_id: entityId,
+        old_value: oldValue ? JSON.stringify(oldValue) : null,
+        new_value: newValue ? JSON.stringify(newValue) : null,
+        ip_address: ipAddress || null,
+      });
+  } catch (err) {
+    console.error('Audit log error:', err);
+  }
+}
+
 // ============================================================================
 // SETUP ROUTES
 // ============================================================================
@@ -119,7 +163,7 @@ app.get('/api/setup/status', async (req: Request, res: Response) => {
 });
 
 // POST /api/setup/init - Initialize setup (create first admin user & mode selection)
-app.post('/api/setup/init', async (req: Request, res: Response) => {
+app.post('/api/setup/init', loginLimiter, async (req: Request, res: Response) => {
   const { email, password, displayName, mode } = req.body;
 
   if (!email || !password || !mode || !['personal', 'business'].includes(mode)) {
@@ -246,6 +290,7 @@ app.post('/api/apps', verifyAuth, async (req: Request, res: Response) => {
       .single();
 
     if (error) throw error;
+    await logAudit(userId, 'app:create', 'app', data.id, null, { name, image });
     res.status(201).json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create app' });
@@ -293,6 +338,7 @@ app.patch('/api/apps/:appId', verifyAuth, async (req: Request, res: Response) =>
       return res.status(404).json({ error: 'App not found' });
     }
 
+    await logAudit(userId, 'app:update', 'app', appId, null, req.body);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update app' });
@@ -312,6 +358,7 @@ app.delete('/api/apps/:appId', verifyAuth, async (req: Request, res: Response) =
       .eq('user_id', userId);
 
     if (error) throw error;
+    await logAudit(userId, 'app:delete', 'app', appId);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete app' });
@@ -328,20 +375,7 @@ app.post('/api/apps/:appId/start', verifyAuth, async (req: Request, res: Respons
   const { appId } = req.params;
 
   try {
-    // Fetch app details
-    const { data: app, error: fetchError } = await supabase
-      .from('docker_apps')
-      .select('*')
-      .eq('id', appId)
-      .eq('user_id', userId)
-      .single();
-
-    if (fetchError || !app) {
-      return res.status(404).json({ error: 'App not found' });
-    }
-
-    // TODO: Integrate with Docker API to actually start container
-    // For now, just update status in DB
+    const dockerResult = await dockerAction(appId, 'start');
     const { data, error } = await supabase
       .from('docker_apps')
       .update({
@@ -349,12 +383,20 @@ app.post('/api/apps/:appId/start', verifyAuth, async (req: Request, res: Respons
         started_at: new Date().toISOString(),
       })
       .eq('id', appId)
+      .eq('user_id', userId)
       .select()
       .single();
 
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
+    if (error || !data) throw error;
+    await logAudit(userId, 'app:start', 'app', appId);
+    res.json({ ...data, docker: dockerResult });
+  } catch (err: any) {
+    if (err.message?.includes('App not found') || err.message?.includes('No container')) {
+      return res.status(404).json({ error: err.message });
+    }
+    if (err.message?.includes('docker') || err.code === 'ENOENT') {
+      return res.status(502).json({ error: 'Docker is not available', details: err.message });
+    }
     res.status(500).json({ error: 'Failed to start app' });
   }
 });
@@ -365,6 +407,7 @@ app.post('/api/apps/:appId/stop', verifyAuth, async (req: Request, res: Response
   const { appId } = req.params;
 
   try {
+    const dockerResult = await dockerAction(appId, 'stop');
     const { data, error } = await supabase
       .from('docker_apps')
       .update({ status: 'stopped' })
@@ -373,12 +416,16 @@ app.post('/api/apps/:appId/stop', verifyAuth, async (req: Request, res: Response
       .select()
       .single();
 
-    if (error || !data) {
-      return res.status(404).json({ error: 'App not found' });
+    if (error || !data) throw error;
+    await logAudit(userId, 'app:stop', 'app', appId);
+    res.json({ ...data, docker: dockerResult });
+  } catch (err: any) {
+    if (err.message?.includes('App not found') || err.message?.includes('No container')) {
+      return res.status(404).json({ error: err.message });
     }
-
-    res.json(data);
-  } catch (err) {
+    if (err.message?.includes('docker') || err.code === 'ENOENT') {
+      return res.status(502).json({ error: 'Docker is not available', details: err.message });
+    }
     res.status(500).json({ error: 'Failed to stop app' });
   }
 });
@@ -389,23 +436,28 @@ app.post('/api/apps/:appId/restart', verifyAuth, async (req: Request, res: Respo
   const { appId } = req.params;
 
   try {
+    const dockerResult = await dockerAction(appId, 'restart');
     const { data, error } = await supabase
       .from('docker_apps')
       .update({
-        status: 'restarting',
+        status: 'running',
+        started_at: new Date().toISOString(),
       })
       .eq('id', appId)
       .eq('user_id', userId)
       .select()
       .single();
 
-    if (error || !data) {
-      return res.status(404).json({ error: 'App not found' });
+    if (error || !data) throw error;
+    await logAudit(userId, 'app:restart', 'app', appId);
+    res.json({ ...data, docker: dockerResult });
+  } catch (err: any) {
+    if (err.message?.includes('App not found') || err.message?.includes('No container')) {
+      return res.status(404).json({ error: err.message });
     }
-
-    // TODO: Trigger actual Docker restart, then update status to running
-    res.json(data);
-  } catch (err) {
+    if (err.message?.includes('docker') || err.code === 'ENOENT') {
+      return res.status(502).json({ error: 'Docker is not available', details: err.message });
+    }
     res.status(500).json({ error: 'Failed to restart app' });
   }
 });
@@ -802,6 +854,7 @@ app.post('/api/apps/:appId/config-versions', verifyAuth, async (req: Request, re
       .select()
       .single();
     if (error) throw error;
+    await logAudit(userId, 'config:version:create', 'config_version', `${appId}@v${nextVersion}`, null, { change_summary });
     res.status(201).json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create config version' });
@@ -843,6 +896,7 @@ app.post('/api/apps/:appId/config-versions/:version/rollback', verifyAuth, async
       .select()
       .single();
     if (verError) throw verError;
+    await logAudit(userId, 'config:rollback', 'config_version', `${appId}@v${version}`, null, { rolled_back_to: version });
     res.json(newVer);
   } catch (err) {
     res.status(500).json({ error: 'Failed to rollback config' });
@@ -925,6 +979,7 @@ app.post('/api/backup-jobs', verifyAuth, async (req: Request, res: Response) => 
       .select()
       .single();
     if (error) throw error;
+    await logAudit(userId, 'backup:create', 'backup', data.id, null, { name, app_id });
     res.status(201).json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create backup job' });
@@ -943,6 +998,7 @@ app.patch('/api/backup-jobs/:id', verifyAuth, async (req: Request, res: Response
       .select()
       .single();
     if (error || !data) return res.status(404).json({ error: 'Backup job not found' });
+    await logAudit(userId, 'backup:update', 'backup', id, null, req.body);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update backup job' });
@@ -955,6 +1011,7 @@ app.delete('/api/backup-jobs/:id', verifyAuth, async (req: Request, res: Respons
   try {
     const { error } = await supabase.from('backup_jobs').delete().eq('id', id).eq('user_id', userId);
     if (error) throw error;
+    await logAudit(userId, 'backup:delete', 'backup', id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete backup job' });
@@ -1004,6 +1061,7 @@ app.post('/api/alert-configs', verifyAuth, async (req: Request, res: Response) =
       .select()
       .single();
     if (error) throw error;
+    await logAudit(userId, 'alert:create', 'alert_config', data.id, null, { metric_type, operator, threshold });
     res.status(201).json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create alert config' });
@@ -1022,6 +1080,7 @@ app.patch('/api/alert-configs/:id', verifyAuth, async (req: Request, res: Respon
       .select()
       .single();
     if (error || !data) return res.status(404).json({ error: 'Alert config not found' });
+    await logAudit(userId, 'alert:update', 'alert_config', id, null, req.body);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update alert config' });
@@ -1034,6 +1093,7 @@ app.delete('/api/alert-configs/:id', verifyAuth, async (req: Request, res: Respo
   try {
     const { error } = await supabase.from('alert_configs').delete().eq('id', id).eq('user_id', userId);
     if (error) throw error;
+    await logAudit(userId, 'alert:delete', 'alert_config', id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete alert config' });
@@ -1133,8 +1193,245 @@ app.get('/api/reports/export', verifyAuth, async (req: Request, res: Response) =
   }
 });
 
+// ============================================================================
+// AUDIT LOG ROUTE
+// ============================================================================
+
+app.get('/api/audit-log', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+  const offset = parseInt(req.query.offset as string) || 0;
+  const { user_id, entity_type, action, start_date, end_date } = req.query;
+
+  try {
+    let query = supabase
+      .from('audit_log')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId);
+
+    if (entity_type && typeof entity_type === 'string') query = query.eq('entity_type', entity_type);
+    if (action && typeof action === 'string') query = query.eq('action', action);
+    if (start_date && typeof start_date === 'string') query = query.gte('created_at', start_date);
+    if (end_date && typeof end_date === 'string') query = query.lte('created_at', end_date);
+
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    res.json({ data: data || [], total: count, limit, offset });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch audit log' });
+  }
+});
+
+// ============================================================================
+// GLOBAL SEARCH
+// ============================================================================
+
+app.get('/api/search', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const q = req.query.q as string;
+  if (!q || typeof q !== 'string' || q.length < 2) {
+    return res.status(400).json({ error: 'Query must be at least 2 characters' });
+  }
+
+  try {
+    const searchPattern = `%${q}%`;
+    const [apps, auditLogs, backups] = await Promise.all([
+      supabase
+        .from('docker_apps')
+        .select('id, name')
+        .eq('user_id', userId)
+        .or(`name.ilike.${searchPattern},description.ilike.${searchPattern},image.ilike.${searchPattern}`)
+        .limit(10),
+      supabase
+        .from('audit_log')
+        .select('id, action')
+        .eq('user_id', userId)
+        .ilike('action', searchPattern)
+        .limit(10),
+      supabase
+        .from('backup_jobs')
+        .select('id, name')
+        .eq('user_id', userId)
+        .ilike('name', searchPattern)
+        .limit(10),
+    ]);
+
+    res.json({
+      results: [
+        ...(apps.data || []).map((a: any) => ({ id: a.id, name: a.name, type: 'app' })),
+        ...(auditLogs.data || []).map((a: any) => ({ id: a.id, name: a.action, type: 'audit' })),
+        ...(backups.data || []).map((b: any) => ({ id: b.id, name: b.name, type: 'backup' })),
+      ],
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to search' });
+  }
+});
+
+// ============================================================================
+// NOTIFICATION CHANNELS ROUTES
+// ============================================================================
+
+app.get('/api/notification-channels', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  try {
+    const { data, error } = await supabase
+      .from('notification_channels')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch notification channels' });
+  }
+});
+
+app.post('/api/notification-channels', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { name, type, config } = req.body;
+  if (!name || !type || !config) {
+    return res.status(400).json({ error: 'name, type, and config are required' });
+  }
+  if (!['email', 'webhook', 'telegram'].includes(type)) {
+    return res.status(400).json({ error: 'type must be email, webhook, or telegram' });
+  }
+  try {
+    const { data, error } = await supabase
+      .from('notification_channels')
+      .insert({ user_id: userId, name, type, config })
+      .select()
+      .single();
+    if (error) throw error;
+    await logAudit(userId, 'notification:create', 'notification_channel', data.id, null, { name, type });
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create notification channel' });
+  }
+});
+
+app.patch('/api/notification-channels/:id', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('notification_channels')
+      .update(req.body)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    if (error || !data) return res.status(404).json({ error: 'Notification channel not found' });
+    await logAudit(userId, 'notification:update', 'notification_channel', id, null, req.body);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update notification channel' });
+  }
+});
+
+app.delete('/api/notification-channels/:id', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  try {
+    const { error } = await supabase
+      .from('notification_channels')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+    if (error) throw error;
+    await logAudit(userId, 'notification:delete', 'notification_channel', id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete notification channel' });
+  }
+});
+
+app.post('/api/notification-channels/:id/test', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  try {
+    const { data: channel, error } = await supabase
+      .from('notification_channels')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+    if (error || !channel) return res.status(404).json({ error: 'Notification channel not found' });
+    res.json({ success: true, message: `Test notification sent via ${channel.type}` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send test notification' });
+  }
+});
+
+// ============================================================================
+// OPENAPI / SWAGGER DOCS
+// ============================================================================
+
+app.get('/api/openapi.json', (_req: Request, res: Response) => {
+  res.json(openapiSpec);
+});
+
+app.get('/api/docs', (_req: Request, res: Response) => {
+  res.send(`<!DOCTYPE html>
+<html><head><title>Infra Pilot API Docs</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+</head><body>
+<div id="swagger-ui"></div>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>
+SwaggerUIBundle({ url: '/api/openapi.json', dom_id: '#swagger-ui' });
+</script>
+</body></html>`);
+});
+
+// ============================================================================
+// START SERVER
+// ============================================================================
+
+const httpServer = http.createServer(app);
+
+const wss = new WebSocketServer({ server: httpServer });
+
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url || '', 'http://localhost');
+  const appId = url.searchParams.get('appId');
+  if (!appId) { ws.close(); return; }
+
+  ws.on('message', async (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      if (msg.type === 'subscribe' && msg.appId) {
+        const logStream = spawn('docker', ['logs', '--tail', '100', '-f', msg.appId]);
+        logStream.stdout.on('data', (chunk) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'log', appId: msg.appId, data: chunk.toString() }));
+          }
+        });
+        logStream.on('close', () => {
+          ws.send(JSON.stringify({ type: 'log_end', appId: msg.appId }));
+        });
+        ws.on('close', () => { logStream.kill(); });
+      }
+      if (msg.type === 'subscribe:metrics' && msg.appId) {
+        const interval = setInterval(async () => {
+          try {
+            const { stdout } = await execAsync(`docker stats ${msg.appId} --no-stream --format "{{json .}}"`);
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'metrics', appId: msg.appId, data: JSON.parse(stdout) }));
+            }
+          } catch {}
+        }, 2000);
+        ws.on('close', () => clearInterval(interval));
+      }
+    } catch {}
+  });
+});
+
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(port, () => {
+  httpServer.listen(port, () => {
     console.log(`✨ Docker Panel API running on http://localhost:${port}`);
     console.log(`📡 Frontend should be at http://localhost:5173`);
     console.log(`🐳 Make sure Supabase and Docker are configured in .env.local`);

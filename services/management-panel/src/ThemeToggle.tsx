@@ -1,18 +1,24 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 
 export const ThemeToggle: React.FC = () => {
-  const toggle = () => {
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
     const root = document.documentElement;
-    if (root.classList.contains('dark')) {
-      root.classList.remove('dark');
-    } else {
-      root.classList.add('dark');
-    }
-  };
+    root.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const toggle = () => setIsDark(prev => !prev);
 
   return (
     <button onClick={toggle} aria-label="Toggle theme" className="px-3 py-2 rounded bg-brand-primary text-white shadow-sm hover:bg-brand-primary-dark" title="Toggle theme">
-      Theme
+      {isDark ? 'Light' : 'Dark'}
     </button>
   );
 };

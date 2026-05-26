@@ -24,8 +24,16 @@ Infra Pilot bündelt mehrere Services und Hilfsbibliotheken, um Container-/Game-
 
 - ✅ **Management Panel:** React/Vite-Frontend mit Express-API, Personal Mode, optionalem Business Mode, Supabase/PostgreSQL-Anbindung und Seed-Demo-Feature-Gate.
 - ✅ **Orchestrator Agent:** Python-Service mit Discord-/VPS-Provisioning-Komponenten, Provider-neutraler Namensauflösung und eigenen Tests.
-- ✅ **Discord Service:** Node.js/Discord.js-Integration für Pterodactyl-/Provisioning-Flows.
+- ✅ **Discord Service:** Node.js/Discord.js-Integration für Pterodactyl-/Provisioning-Flows. Alle 28 Module sind eingebunden und verdrahtet.
 - ✅ **Provider-neutrales Test-Framework:** Token-Mapping unter `infra/naming/` und Tests unter `tests/`.
+- ✅ **Real-Time WebSocket:** Live Container-Logs und Metrik-Streaming via WebSocket-Server im Management Panel.
+- ✅ **Audit Trail:** Append-Only-Audit-Log für alle Mutationen (Apps, Backups, Alerts, Config) mit Timeline-Viewer.
+- ✅ **Globale Suche:** Cmd+K-Palette durchsucht Apps, Backups und Audit-Logs via PostgreSQL ILIKE.
+- ✅ **Notification Channels:** Verwaltung mehrerer Benachrichtigungskanäle (Email, Webhook, Telegram) mit integrierten Providern.
+- ✅ **PWA Support:** Manifest + Service Worker für installierbare Desktop-App und Offline-Caching.
+- ✅ **Onboarding Wizard:** 5-schrittige geführte Tour nach der Ersteinrichtung.
+- ✅ **Mobile-Responsive Layout:** Hamburger-Menü, Slide-In-Sidebar für Mobilgeräte.
+- ✅ **Web Terminal:** In-Browser-Container-Terminal via WebSocket + Docker exec.
 - ⚠️ **Docker Compose:** `docker-compose.yml` ist als Stack-Scaffold vorhanden. Aktuell besitzt nur `services/orchestrator-agent/` ein Dockerfile; die Compose-Definitionen für Management Panel, Discord Service, Service Core und Monitoring benötigen vor einem vollständigen Stack-Start noch Dockerfiles bzw. Infrastrukturdateien.
 - ⚠️ **Kubernetes/Terraform:** Die README verweist nicht mehr auf produktionsfertige K8s-/Terraform-Manifeste, weil entsprechende `infrastructure/`-Dateien derzeit nicht im Repository enthalten sind.
 
@@ -116,10 +124,19 @@ Weitere Details: [Discord Service README](services/discord-service/README.md).
 
 Modernes Docker-Management-Panel für Self-Hoster und Hosting-Workflows.
 
-- **Stack:** React 19, TypeScript, Vite, Tailwind CSS, Express.js, Supabase/PostgreSQL.
+- **Stack:** React 19, TypeScript, Vite, Tailwind CSS, Express.js, Supabase/PostgreSQL, WebSocket (ws).
 - **Modi:** Personal Mode als Standard, Business Mode für Kunden-, Plan- und Demo-Datenflüsse.
 - **Features:** App-/Container-CRUD, Logs, Ressourcenlimits, Setup-Flow, Seed Demo Feature Gate, optionale zero-native Desktop-Shell.
-- **Neue Dashboards/Seiten:** AccessLogs, Backups, Monitoring, Reports, Settings – jeweils mit eigenen Komponenten (HealthCheckDashboard, MetricsOverview, PerformanceChart, PlayerCountChart, ResourceChart, ResourceMonitor, SystemGauge, AccessLogViewer, AlertConfig, AlertHistory, BackupManager, BackupStatus, ConfigVersionControl, MaintenanceScheduler).
+- **Dashboards/Seiten:** Dashboard, AppDetail, AppForm, Monitoring, AccessLogs, Backups, Reports, Settings, **AuditLog**, Customers.
+- **Real-Time:** WebSocket-Server für Live-Container-Logs (`docker logs -f`) und Metrik-Streaming (`docker stats`, 2s-Intervall).
+- **Globale Suche:** Cmd+K-Palette mit Echtzeit-Suche über Apps, Backups und Audit-Logs.
+- **Audit Trail:** Append-Only-Log aller Mutationen mit Timeline-Viewer und Filterung.
+- **Benachrichtigungen:** Verwaltung von Email-/Webhook-/Telegram-Kanälen mit Testversand.
+- **Web Terminal:** In-Browser-Container-Shell via WebSocket + Docker exec.
+- **PWA:** Installierbare App mit Service Worker und Offline-Caching.
+- **Onboarding:** Geführte 5-Schritt-Tour nach Ersteinrichtung.
+- **Theme Persistenz:** Dark/Light-Mode wird in localStorage gespeichert.
+- **Mobile-Responsive:** Hamburger-Menü und Slide-In-Sidebar.
 - **Wichtige Skripte:**
   - `npm run dev` startet Frontend und Backend parallel.
   - `npm run dev:frontend` startet nur Vite.
@@ -133,7 +150,8 @@ Python-basierte Provisioning- und Orchestrierungslogik.
 
 - **Stack:** Python 3.9+, Discord.py/aiohttp-Umfeld laut Requirements.
 - **Features:** VPS-Management, Billing-/Pricing-Cogs, Ressourcenmonitoring, Integration Hooks.
-- **Cogs (25+):** alert_manager, auto_scaling, backup_manager, benchmark, bot_commands, cleanup, clone_system, cost_optimizer, cost_prediction, dns_manager, health_checks, load_balancer, network_monitor, performance_optimizer, quota_manager, recovery, resource_manager, security_audit, server_migration, snapshot_system, ssl_manager, template_manager, traffic_analysis, troubleshoot, update_manager.
+- **Cogs (29):** alert_manager, auto_scaling, backup_manager, benchmark, bot_commands, cleanup, clone_system, cost_optimizer, cost_prediction, dns_manager, health_checks, load_balancer, monitoring, network_monitor, performance_optimizer, quota_manager, recovery, resource_manager, security_audit, server_migration, snapshot_system, ssl_manager, template_manager, traffic_analysis, troubleshoot, update_manager, vps_billing, vps_commands, vps_pricing.
+- **Einstiegspunkt:** `main.py` lädt alle 29 Cogs. `bot.py` und `b2.py` sind Legacy-Dateien (deprecated), die nur noch als Referenz dienen.
 - **Docker:** Enthält aktuell ein Dockerfile und ist damit der einzige Service, der im Repository direkt als Image gebaut werden kann.
 
 ### Discord Service (`services/discord-service/`)
@@ -142,15 +160,16 @@ Discord.js-Service für Pterodactyl-nahe Server-Erstellungsflüsse.
 
 - **Stack:** Node.js 18+, CommonJS, Discord.js/Axios/Dotenv (package.json jetzt vorhanden).
 - **Features:** `/server create`-Flow, Pterodactyl-User-/Server-Erstellung, Rollen-/Limit-Konfiguration.
-- **Module (20+):** activityTracker, advancedTicketSystem, categoryManager, channelCleanup, customCommands, eventScheduler, messageArchive, messageFilter, messageLogger, messageScheduler, pollCreator, prefixSettings, roleHierarchy, serverStatus, statsGraphs, tempVoiceChannels, topicRotation, verificationLevels, verificationSystem, voiceManager, warningSystem, welcomeMessages.
+- **Module (28, alle verdrahtet):** activityTracker, advancedTicketSystem, categoryManager, channelCleanup, customCommands, dashboard, economyCommands, eventScheduler, messageArchive, messageFilter, messageLogger, messageScheduler, pollCreator, prefixSettings, roleHierarchy, roleManager, serverStatus, statsCommands, statsGraphs, tempVoiceChannels, ticketCommands, ticketSystem, topicRotation, verificationLevels, verificationSystem, voiceManager, warningSystem, welcomeMessages.
 - **Konfiguration:** siehe `services/discord-service/.env.example`.
 
 ### Integration Service (`services/integration-service/`)
 
 Python-basierter Cross-Plattform-Hub für serviceübergreifende Kommunikation.
 
-- **Stack:** Python 3.9+, Flask/FastAPI-Umfeld.
-- **Module:** alerts, announcements, auth, commands, events, messaging, permissions, users.
+- **Stack:** Python 3.9+, aiohttp.
+- **Module:** alerts, announcements, api, auth, backup, commands, events, integration, logging, messaging, **notification_providers**, permissions, resource_tracker, users.
+- **Notification Providers:** Email (SMTP mit TLS), Webhook (HTTP POST mit konfigurierbaren Headern), Telegram (Bot API) – alle über einen zentralen `NotificationManager` orchestriert.
 - **Aufgabe:** Zentraler Nerv des Gesamtsystems – verbindet Discord-Bot, Minecraft-Plugin, Orchestrator und Management Panel über eine einheitliche API.
 
 ### Service Core (`services/service-core/`)

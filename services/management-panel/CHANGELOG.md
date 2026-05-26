@@ -1,5 +1,31 @@
 # Docker Panel - Complete Changelog & Implementation
 
+## 📦 Release 2026-05-26 — UX & Platform Expansion
+
+### ✅ New Backend Features
+- **Real Docker Calls** — Container start/stop/restart now use `docker exec` directly instead of status-only stubs
+- **Rate-Limited Login** — `POST /api/setup/init` protected by 10 requests per 15-minute window
+- **OpenAPI / Swagger Docs** — Full OpenAPI 3.1 spec at `/api/openapi.json` with interactive Swagger UI at `/api/docs`
+- **Audit Trail** — New `audit_log` table logs all mutations (app CRUD, backups, alerts, config) with `GET /api/audit-log` endpoint supporting pagination and filtering
+- **WebSocket Real-Time** — Dedicated WebSocket server for live `docker logs -f` streaming and `docker stats` metrics at 2s intervals
+- **Global Search API** — `GET /api/search?q=` searches apps, backups, and audit logs via PostgreSQL ILIKE
+- **Notification Channels** — Full CRUD for email/webhook/telegram channels plus test endpoint; new `notification_channels` table
+
+### ✅ New Frontend Features
+- **Theme Persistence** — Dark/light mode preference saved to `localStorage`
+- **Onboarding Wizard** — 5-step guided tour shown on first visit, dismissable with `localStorage` flag
+- **PWA Support** — `manifest.json` + service worker with cache-first strategy, registered in `main.tsx`
+- **Mobile-Responsive Layout** — Hamburger menu toggle, slide-in sidebar on small screens
+- **Global Search (Cmd+K)** — Command palette with debounced search, grouped results, keyboard shortcut
+- **Audit Trail Viewer** — New `/audit` page with filterable table and pagination
+- **Web Terminal** — In-browser container shell with WebSocket, command input, 500-line buffer, fullscreen toggle
+
+### ✅ New Integration Service Features
+- **Notification Providers** — Email (SMTP/TLS), Webhook (HTTP POST), Telegram (Bot API) with `NotificationManager` registry
+- **Alert Notification Integration** — Alerts can now trigger delivery through configured notification channels
+
+---
+
 ## 📋 Overview
 
 The management panel has been completely redesigned and reimplemented from scratch to create a **self-hosted Docker container management panel** with:

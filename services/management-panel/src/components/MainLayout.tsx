@@ -11,6 +11,7 @@ export const MainLayout = () => {
   const { mode } = useConfig();
   const [user, setUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -34,7 +35,7 @@ export const MainLayout = () => {
   return (
     <div className="flex min-h-screen bg-slate-950 dark:bg-slate-950">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar isMobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
@@ -44,6 +45,9 @@ export const MainLayout = () => {
             <div className="flex items-center justify-between gap-6">
               {/* Organization Selector & Search */}
               <div className="flex items-center gap-4 flex-1">
+                <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" aria-label="Open sidebar">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer">
                   <span className="text-sm text-white">Acme Corp / Production</span>
                   <span className="text-slate-400">▼</span>

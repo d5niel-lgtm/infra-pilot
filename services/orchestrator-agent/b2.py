@@ -1,3 +1,7 @@
+# DEPRECATED: This file is a legacy standalone implementation. Use main.py instead,
+# which loads all 29 cogs from the cogs/ directory. This file contains security
+# issues (shell=True subprocess calls, flat-file databases, etc.) and is kept
+# only for reference. Scheduled for removal in a future release.
 import logging
 import subprocess
 import sys
@@ -758,6 +762,7 @@ async def admin_kill_all_vps(interaction: discord.Interaction):
 
 if __name__ == "__main__":
     init_database()
+    logging.warning("DEPRECATED: b2.py is legacy. Use main.py instead. This file will be removed in a future release.")
     bot.run(TOKEN)
     except subprocess.CalledProcessError as e:
         await interaction.response.send_message(
@@ -1173,6 +1178,7 @@ async def node_admin(interaction: discord.Interaction):
 # Start the Bot
 # =============================================================================
 
+logging.warning("DEPRECATED: b2.py is legacy. Use main.py instead. This file will be removed in a future release.")
 bot.run(TOKEN)
     # Gibt die Anzahl der Server zurück
     return len(get_user_servers(userid)) """

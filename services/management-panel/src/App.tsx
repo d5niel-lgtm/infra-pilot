@@ -14,7 +14,10 @@ import { AccessLogs } from './pages/AccessLogs';
 import { Backups } from './pages/Backups';
 import { Reports } from './pages/Reports';
 import { SettingsPage } from './pages/Settings';
+import { AuditLog } from './pages/AuditLog';
 import { MainLayout } from './components/MainLayout';
+import { OnboardingWizard } from './components/OnboardingWizard';
+import { GlobalSearch } from './components/GlobalSearch';
 import { featureGates } from './lib/types';
 
 const SimpleLogo = ({ size = 64 }: { size?: number }) => (
@@ -31,6 +34,15 @@ export default function App() {
   const [mode, setMode] = useState<SetupMode>('personal');
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -90,6 +102,7 @@ export default function App() {
                 <Route path="/logs/access" element={<AccessLogs />} />
                 <Route path="/backups" element={<Backups />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/audit" element={<AuditLog />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/settings/alerts" element={<SettingsPage />} />
                 <Route path="/settings/maintenance" element={<SettingsPage />} />
@@ -100,6 +113,8 @@ export default function App() {
               </Route>
             )}
         </Routes>
+        <OnboardingWizard />
+        <GlobalSearch />
       </BrowserRouter>
       <Toaster />
     </ConfigContext.Provider>

@@ -8,6 +8,7 @@ interface SidebarItem {
   icon: string;
   route?: string;
   children?: SidebarItem[];
+  attrs?: Record<string, string>;
 }
 
 const SimpleLogo = ({ size = 32 }: { size?: number }) => (
@@ -19,7 +20,7 @@ const SimpleLogo = ({ size = 32 }: { size?: number }) => (
   </div>
 );
 
-export const Sidebar = () => {
+export const Sidebar = ({ isMobileOpen, onMobileClose }: { isMobileOpen?: boolean; onMobileClose?: () => void }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { mode } = useConfig();
@@ -43,12 +44,14 @@ export const Sidebar = () => {
       label: 'Monitoring',
       icon: '📈',
       route: '/monitoring',
+      attrs: { 'data-tour': 'monitoring' },
     },
     {
       id: 'apps',
       label: 'Apps',
       icon: '📦',
       route: '/apps',
+      attrs: { 'data-tour': 'apps' },
     },
     {
       id: 'deployments',
@@ -92,6 +95,7 @@ export const Sidebar = () => {
       label: 'Backups',
       icon: '💾',
       route: '/backups',
+      attrs: { 'data-tour': 'backups' },
     },
     {
       id: 'reports',
@@ -103,6 +107,7 @@ export const Sidebar = () => {
       id: 'settings',
       label: 'Settings',
       icon: '⚙️',
+      attrs: { 'data-tour': 'settings' },
       children: [
         { id: 'general', label: 'General', icon: '🔧', route: '/settings' },
         { id: 'alerts', label: 'Alerts', icon: '🔔', route: '/settings/alerts' },
@@ -119,14 +124,17 @@ export const Sidebar = () => {
   const handleNavigation = (route?: string) => {
     if (route) {
       navigate(route);
+      onMobileClose?.();
     }
   };
 
   return (
-    <div className="w-56 h-screen bg-slate-900 dark:bg-slate-950 border-r border-slate-800 flex flex-col overflow-y-auto sticky top-0 left-0">
+    <>
+      {isMobileOpen && <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={onMobileClose} />}
+      <div className={`fixed md:sticky inset-y-0 left-0 z-30 w-56 h-screen bg-slate-900 dark:bg-slate-950 border-r border-slate-800 flex flex-col overflow-y-auto transition-transform duration-200 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
       {/* Logo Section */}
       <div className="p-6 border-b border-slate-800">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { navigate('/dashboard'); onMobileClose?.(); }}>
           <SimpleLogo size={40} />
           <div>
             <h1 className="text-lg font-bold text-white">Infra Pilot</h1>
@@ -155,6 +163,7 @@ export const Sidebar = () => {
         {sidebarItems.map((item) => (
           <div key={item.id}>
             <button
+              {...(item.attrs || {})}
               onClick={() => {
                 if (item.children) {
                   toggleExpanded(item.id);
@@ -262,5 +271,6 @@ export const Sidebar = () => {
         </button>
       </div>
     </div>
+    </>
   );
 };

@@ -140,3 +140,29 @@ class AlertManager:
             self._save_channels()
             return True
         return False
+
+    async def send_alert_notification(self, alert: dict, notification_manager):
+        """Send alert via configured notification channels."""
+        channels = alert.get("notification_channels", [])
+        if not channels:
+            return
+
+        subject = f"ALERT: {alert.get('name', 'Unknown')} - {alert.get('severity', 'info').upper()}"
+        message = (
+            f"Alert: {alert.get('name')}\n"
+            f"Severity: {alert.get('severity')}\n"
+            f"Metric: {alert.get('metric')}\n"
+            f"Value: {alert.get('current_value')}\n"
+            f"Threshold: {alert.get('threshold')}\n"
+            f"Time: {alert.get('triggered_at')}\n"
+            f"App: {alert.get('app_id', 'N/A')}"
+        )
+
+        await notification_manager.send_notification(
+            channels=channels,
+            subject=subject,
+            message=message,
+            recipients={c: alert.get(f"{c}_recipient", "") for c in channels},
+            event="alert_triggered",
+            timestamp=alert.get("triggered_at", ""),
+        )

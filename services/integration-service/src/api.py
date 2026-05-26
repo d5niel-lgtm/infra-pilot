@@ -22,6 +22,7 @@ from alerts import AlertManager
 from announcements import AnnouncementScheduler
 from permissions import PermissionManager
 from logging import CrossPlatformLogger, ServerLogsIntegrator, BackupLogManager
+from notification_providers import NotificationManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,6 +65,8 @@ class IntegrationAPIServer:
         self.resource_alloc = ResourceAllocationManager(self.service.config, self.resource_tracker)
         self.resource_sched = ResourceSchedulingCoordinator(self.service.config)
         self.resource_optim = ResourceOptimizationCoordinator(self.service.config, self.resource_tracker)
+        self.notification_manager = NotificationManager()
+        self.app["notification_manager"] = self.notification_manager
 
     @web.middleware
     async def auth_middleware(self, request: web.Request, handler) -> web.Response:
@@ -191,6 +194,7 @@ class IntegrationAPIServer:
         self.app.router.add_post('/api/reports/performance', self.handle_performance_report)
         self.app.router.add_get('/api/reports', self.handle_list_reports)
         self.app.router.add_get('/api/integrated/resource-management', self.handle_integrated_resource_management)
+        self.app.router.add_post('/api/notifications/test', self.handle_test_notification)
 
     async def handle_index(self, request: web.Request) -> web.Response:
         return web.json_response({
@@ -349,6 +353,28 @@ class IntegrationAPIServer:
             data.get('message', {}), data.get('priority', 'info'), data.get('target_user')
         )
         return web.json_response({'success': success})
+
+    async def handle_test_notification(self, request: web.Request) -> web.Response:
+        try:
+            data = await request.json()
+            channels = data.get("channels", [])
+            recipients = data.get("recipients", {})
+
+            notification_manager = request.app.get("notification_manager")
+            if not notification_manager:
+                return web.json_response({"error": "Notification manager not available"}, status=503)
+
+            results = await notification_manager.send_notification(
+                channels=channels,
+                subject="Test Notification from Infra Pilot",
+                message="This is a test notification to verify your notification channel configuration.",
+                recipients=recipients,
+                event="test",
+            )
+
+            return web.json_response({"results": results})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=400)
 
     async def handle_message_bridge(self, request: web.Request) -> web.Response:
         data = await request.json()

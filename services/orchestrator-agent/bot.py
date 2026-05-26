@@ -1,3 +1,7 @@
+# DEPRECATED: This file is a legacy standalone implementation. Use main.py instead,
+# which loads all 29 cogs from the cogs/ directory. This file contains security
+# issues (shell=True subprocess calls, flat-file databases, etc.) and is kept
+# only for reference. Scheduled for removal in a future release.
 import logging
 import subprocess
 import sys
@@ -954,4 +958,5 @@ async def help_command(interaction: discord.Interaction):
 # Run the Bot
 # -----------------------------------------------------------------------------
 
+logging.warning("DEPRECATED: bot.py is legacy. Use main.py instead. This file will be removed in a future release.")
 bot.run(TOKEN)

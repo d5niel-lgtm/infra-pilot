@@ -21,6 +21,11 @@ Cross-platform integration features for Infra Pilot.
 - **Cross-platform events**: Server events broadcast across all platforms. Player join/leave, achievements, votes.
 - **Cross-platform alerts**: Unified alert system with delivery channels (Discord, in-game, email, webhook).
 - **Server announcement scheduler**: Schedule announcements across platforms. Templates, recurrence.
+- **Notification Providers**:
+  - **Email** — SMTP delivery with TLS support, multipart plain+HTML, configurable from address
+  - **Webhook** — HTTP POST with configurable method, headers, and JSON payload template
+  - **Telegram** — Bot API message delivery with Markdown formatting and web preview control
+  - **NotificationManager** — Central registry dispatching to multiple providers with per-channel results
 
 ### Logging & Monitoring
 - **Unified logging system**: Extended UnifiedLogger with centralized log aggregation, level filtering, search API, retention.
@@ -75,15 +80,21 @@ The service has been modularized into focused Python modules under `src/`:
 
 ```
 src/
-├── __init__.py          # Package marker
-├── alerts.py            # Unified alert system (AlertManager)
-├── announcements.py     # Announcement scheduler (AnnouncementScheduler)
-├── auth.py              # Authentication & security (AuthManager)
-├── commands.py          # Cross-platform commands (CommandExecutor)
-├── events.py            # Event broadcasting (EventBroadcaster)
-├── messaging.py         # Message bridge Discord↔Minecraft (MessageBridge)
-├── permissions.py       # Permission system (PermissionManager)
-├── users.py             # User profiles & linking (UserProfileManager)
+├── __init__.py               # Package marker
+├── alerts.py                 # Unified alert system (AlertManager)
+├── announcements.py          # Announcement scheduler (AnnouncementScheduler)
+├── api.py                    # HTTP API with aiohttp (Auth, Users, Notifications, ...)
+├── auth.py                   # Authentication & security (AuthManager)
+├── backup.py                 # Backup coordination (BackupManager)
+├── commands.py               # Cross-platform commands (CommandExecutor)
+├── events.py                 # Event broadcasting (EventBroadcaster)
+├── integration.py            # Integration service startup/hooks
+├── logging.py                # Unified logging (UnifiedLogger)
+├── messaging.py              # Message bridge Discord↔Minecraft (MessageBridge)
+├── notification_providers.py # Notification providers: Email, Webhook, Telegram + NotificationManager
+├── permissions.py            # Permission system (PermissionManager)
+├── resource_tracker.py       # Resource usage tracking
+└── users.py                  # User profiles & linking (UserProfileManager)
 ```
 
 ## Environment Variables
@@ -123,6 +134,7 @@ src/
 - `PUT /api/notifications/preferences/{user_id}` - Update preferences
 - `POST /api/notifications/digest/{user_id}` - Send digest
 - `POST /api/notifications/priority` - Send with priority
+- `POST /api/notifications/test` - Test notification delivery through specified channels (takes `channels` and `recipients` in JSON body)
 
 ### Messaging
 - `POST /api/messaging/bridge` - Bridge message (Discord↔Minecraft)
