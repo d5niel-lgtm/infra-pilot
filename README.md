@@ -337,6 +337,7 @@ Der zentrale Dokumentationsindex liegt unter [docs/README.md](docs/README.md).
 - [Branding Guidelines](docs/branding-guidelines.md)
 - [Design System](docs/design-system.md)
 - [Design Tokens](docs/design-tokens.md)
+- [Feature Implementation Plan v2](docs/feature-implementation-plan-v2.md) (50 neue Features: AI, Developer Ecosystem, Advanced Infra, Collaboration, Observability, UX, Compliance)
 
 ## Security
 
