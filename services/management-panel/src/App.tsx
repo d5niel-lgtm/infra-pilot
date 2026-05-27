@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { IntlProvider } from 'react-intl';
 import { Toaster } from 'sonner';
 import { apiClient } from './lib/api';
 import { getAccessToken, setAccessToken } from './lib/auth';
@@ -16,10 +17,36 @@ import { Reports } from './pages/Reports';
 import { SettingsPage } from './pages/Settings';
 import { BillingPage } from './pages/Billing';
 import { AuditLog } from './pages/AuditLog';
+import { ThemeStudio } from './pages/ThemeStudio';
+import { KnowledgeBase } from './pages/KnowledgeBase';
+import { DashboardBuilder } from './pages/DashboardBuilder';
+import { Marketplace } from './pages/Marketplace';
+import { ActivityFeed } from './components/ActivityFeed';
 import { MainLayout } from './components/MainLayout';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { GlobalSearch } from './components/GlobalSearch';
 import { featureGates } from './lib/types';
+import { I18nContext } from './i18n/index';
+import { detectBrowserLocale, type SupportedLocale } from './i18n/locale-detector';
+import { isRTL } from './i18n/locale-detector';
+import { RTLProvider } from './i18n/rtl-support';
+import { SkipLink } from './components/accessibility/SkipLink';
+import { KeyboardShortcuts } from './components/accessibility/KeyboardShortcuts';
+import en from './i18n/en.json';
+import de from './i18n/de.json';
+import zh from './i18n/zh.json';
+import es from './i18n/es.json';
+import fr from './i18n/fr.json';
+import ja from './i18n/ja.json';
+import pt from './i18n/pt.json';
+import ru from './i18n/ru.json';
+import ar from './i18n/ar.json';
+import ko from './i18n/ko.json';
+import tr from './i18n/tr.json';
+
+const messages: Record<string, Record<string, string>> = {
+  en, de, zh, es, fr, ja, pt, ru, ar, ko, tr,
+};
 
 const SimpleLogo = ({ size = 64 }: { size?: number }) => (
   <div
@@ -35,6 +62,15 @@ export default function App() {
   const [mode, setMode] = useState<SetupMode>('personal');
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [locale, setLocaleState] = useState<SupportedLocale>(detectBrowserLocale());
+
+  const setLocale = useCallback((l: SupportedLocale) => {
+    setLocaleState(l);
+    localStorage.setItem('locale', l);
+  }, []);
+
+  const direction = useMemo(() => isRTL(locale) ? 'rtl' : 'ltr', [locale]);
+  const i18nCtx = useMemo(() => ({ locale, setLocale, direction }), [locale, setLocale, direction]);
 
   useEffect(() => {
     const saved = localStorage.getItem('theme');
@@ -48,7 +84,6 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       try {
-        // Check setup status
         const status = await apiClient.getSetupStatus();
 
         if (!status.initialized) {
@@ -57,7 +92,6 @@ export default function App() {
           setInitialized(true);
           setMode(status.mode as SetupMode);
 
-          // If we have a token, set it
           const token = getAccessToken();
           if (token) {
             apiClient.setToken(token);
@@ -86,41 +120,56 @@ export default function App() {
   }
 
   return (
-    <ConfigContext.Provider value={{ mode, loading: false }}>
-      <BrowserRouter>
-        <Routes>
-          {!initialized ? (
-            <Route path="*" element={<Setup />} />
-          ) : !authenticated ? (
-            <Route path="*" element={<Navigate to="/setup" replace />} />
-            ) : (
-              <Route element={<MainLayout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/monitoring" element={<Monitoring />} />
-                <Route path="/apps/new" element={<AppForm />} />
-                <Route path="/apps/:appId" element={<AppDetail />} />
-                <Route path="/apps/:appId/edit" element={<AppForm />} />
-                <Route path="/logs/access" element={<AccessLogs />} />
-                <Route path="/backups" element={<Backups />} />
-                <Route path="/reports" element={<Reports />} />
+    <IntlProvider messages={messages[locale]} locale={locale} defaultLocale="en">
+      <I18nContext.Provider value={i18nCtx}>
+        <RTLProvider>
+          <ConfigContext.Provider value={{ mode, loading: false }}>
+            <BrowserRouter>
+              <SkipLink />
+              <KeyboardShortcuts />
+              <Routes>
+                {!initialized ? (
+                  <Route path="*" element={<Setup />} />
+                ) : !authenticated ? (
+                  <Route path="*" element={<Navigate to="/setup" replace />} />
+                  ) : (
+                    <Route element={<MainLayout />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/monitoring" element={<Monitoring />} />
+                      <Route path="/apps/new" element={<AppForm />} />
+                      <Route path="/apps/:appId" element={<AppDetail />} />
+                      <Route path="/apps/:appId/edit" element={<AppForm />} />
+                      <Route path="/logs/access" element={<AccessLogs />} />
+                      <Route path="/backups" element={<Backups />} />
+                      <Route path="/reports" element={<Reports />} />
                 <Route path="/audit" element={<AuditLog />} />
+                <Route path="/activity" element={<ActivityFeed limit={50} />} />
+                <Route path="/knowledge-base" element={<KnowledgeBase />} />
+                <Route path="/knowledge-base/:articleId" element={<KnowledgeBase />} />
+                <Route path="/dashboard-builder" element={<DashboardBuilder />} />
+                <Route path="/dashboard-builder/:id" element={<DashboardBuilder />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/settings/alerts" element={<SettingsPage />} />
-                <Route path="/settings/maintenance" element={<SettingsPage />} />
-                {featureGates.canManageCustomers(mode) && (
-                  <Route path="/customers" element={<Customers />} />
-                )}
+                      <Route path="/settings/alerts" element={<SettingsPage />} />
+                      <Route path="/settings/maintenance" element={<SettingsPage />} />
+                      <Route path="/theme-studio" element={<ThemeStudio />} />
+                      {featureGates.canManageCustomers(mode) && (
+                        <Route path="/customers" element={<Customers />} />
+                      )}
                 {featureGates.canViewBilling(mode) && (
                   <Route path="/billing" element={<BillingPage />} />
                 )}
+                <Route path="/marketplace" element={<Marketplace />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Route>
-            )}
-        </Routes>
-        <OnboardingWizard />
-        <GlobalSearch />
-      </BrowserRouter>
-      <Toaster />
-    </ConfigContext.Provider>
+                    </Route>
+                  )}
+              </Routes>
+              <OnboardingWizard />
+              <GlobalSearch />
+            </BrowserRouter>
+            <Toaster />
+          </ConfigContext.Provider>
+        </RTLProvider>
+      </I18nContext.Provider>
+    </IntlProvider>
   );
 }

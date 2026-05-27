@@ -1,6 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useConfig } from '../lib/types';
+import { LanguageSelector } from '../i18n/LanguageSelector';
 
 interface SidebarItem {
   id: string;
@@ -24,6 +26,7 @@ export const Sidebar = ({ isMobileOpen, onMobileClose }: { isMobileOpen?: boolea
   const navigate = useNavigate();
   const location = useLocation();
   const { mode } = useConfig();
+  const intl = useIntl();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const toggleExpanded = (id: string) => {
@@ -102,6 +105,36 @@ export const Sidebar = ({ isMobileOpen, onMobileClose }: { isMobileOpen?: boolea
       label: 'Reports',
       icon: '📄',
       route: '/reports',
+    },
+    {
+      id: 'theme-studio',
+      label: 'Theme Studio',
+      icon: '🎨',
+      route: '/theme-studio',
+    },
+    {
+      id: 'knowledge-base',
+      label: 'Knowledge Base',
+      icon: '📚',
+      route: '/knowledge-base',
+    },
+    {
+      id: 'activity',
+      label: 'Activity',
+      icon: '📋',
+      route: '/activity',
+    },
+    {
+      id: 'dashboard-builder',
+      label: 'Dashboards',
+      icon: '📐',
+      route: '/dashboard-builder',
+    },
+    {
+      id: 'marketplace',
+      label: 'Marketplace',
+      icon: '🧩',
+      route: '/marketplace',
     },
     {
       id: 'settings',
@@ -261,6 +294,9 @@ export const Sidebar = ({ isMobileOpen, onMobileClose }: { isMobileOpen?: boolea
 
       {/* Help & Documentation */}
       <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className="px-2">
+          <LanguageSelector />
+        </div>
         <button className="w-full flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm">
           <span>❓</span>
           <span>Need help?</span>

@@ -1,10 +1,12 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { FormattedMessage } from 'react-intl';
 import { apiClient } from '../lib/api';
 import { clearAccessToken } from '../lib/auth';
 import { useConfig } from '../lib/types';
 import { Sidebar } from './Sidebar';
 import DemoFlagBadge from './DemoFlagBadge';
+import { Announcements } from './accessibility/Announcements';
 
 export const MainLayout = () => {
   const navigate = useNavigate();
@@ -34,6 +36,7 @@ export const MainLayout = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-950 dark:bg-slate-950">
+      <Announcements />
       {/* Sidebar */}
       <Sidebar isMobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
@@ -115,7 +118,7 @@ export const MainLayout = () => {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" id="main-content">
           <div className="p-8">
             <Outlet />
           </div>

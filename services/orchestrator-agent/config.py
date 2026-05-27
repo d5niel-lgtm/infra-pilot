@@ -47,6 +47,11 @@ class Config:
         "memory": 90.0,
         "disk": 90.0,
         "network": 90.0,
+        "threat_cpu": 90.0,
+        "threat_memory": 90.0,
+        "threat_process_count": 100,
+        "threat_ssh_failures": 10,
+        "threat_network_bytes": 10_000_000,
     }
 
     BACKUP_RETENTION: Dict[str, int] = {
@@ -54,6 +59,15 @@ class Config:
         "weekly": 4,
         "monthly": 3,
     }
+
+    OPTIMIZER_IDLE_DAYS: int = 7
+    OPTIMIZER_ANALYSIS_HOURS: int = 168
+
+    CAPACITY_FORECAST_HISTORY_HOURS: int = 720
+    CAPACITY_FORECAST_MAX_RECORDS: int = 1000
+
+    GITOPS_MAX_VERSIONS_PER_VPS: int = 50
+    GITOPS_WEBHOOK_PORT: int = 8500
 
     AUTO_SCALE_COOLDOWN_MINUTES: int = 5
     AUTO_SCALE_CPU_THRESHOLD: float = 80.0
@@ -108,6 +122,37 @@ class Config:
     }
 
     COST_PREDICTION_HISTORY_MONTHS: int = 3
+
+    K8S_NETWORK: str = os.getenv("K8S_NETWORK", "k3s-net")
+    K8S_DATA_DIR: str = os.getenv("K8S_DATA_DIR", "data/k8s_clusters.json")
+
+    EDGE_PING_TIMEOUT_SECONDS: int = 10
+    EDGE_DATA_FILE: str = os.getenv("EDGE_DATA_FILE", "data/edge_nodes.json")
+
+    FAAS_COST_PER_INVOCATION: float = 0.0001
+    FAAS_DATA_FILE: str = os.getenv("FAAS_DATA_FILE", "data/faas_functions.json")
+
+    CLOUD_PRICING_DATA_FILE: str = os.getenv("CLOUD_PRICING_DATA_FILE", "data/cloud_pricing.json")
+
+    DR_PLANS_FILE: str = os.getenv("DR_PLANS_FILE", "data/dr_plans.json")
+    DR_DRILL_INTERVAL_HOURS: int = int(os.getenv("DR_DRILL_INTERVAL_HOURS", "24"))
+    RTO_TARGET_SECONDS: int = int(os.getenv("RTO_TARGET_SECONDS", "300"))
+    RPO_TARGET_SECONDS: int = int(os.getenv("RPO_TARGET_SECONDS", "3600"))
+
+    RUNBOOKS_FILE: str = os.getenv("RUNBOOKS_FILE", "data/runbooks.json")
+    RUNBOOK_CHECK_INTERVAL_SECONDS: int = int(os.getenv("RUNBOOK_CHECK_INTERVAL_SECONDS", "60"))
+
+    SYNTHETIC_CHECKS_FILE: str = os.getenv("SYNTHETIC_CHECKS_FILE", "data/synthetic_checks.json")
+    SYNTHETIC_CHECK_INTERVAL_MINUTES: int = int(os.getenv("SYNTHETIC_CHECK_INTERVAL_MINUTES", "5"))
+    SYNTHETIC_PROBE_LOCATIONS: list = [
+        "us-east-1", "us-west-1", "eu-west-1", "eu-central-1", "ap-southeast-1",
+        "ap-northeast-1", "ap-south-1", "sa-east-1", "me-south-1", "af-south-1",
+    ]
+
+    SCAN_RESULTS_FILE: str = os.getenv("SCAN_RESULTS_FILE", "data/scan_results.json")
+    SCAN_INTERVAL_HOURS: int = int(os.getenv("SCAN_INTERVAL_HOURS", "6"))
+    SCAN_POLICY_DEFAULT_SEVERITY: str = os.getenv("SCAN_POLICY_DEFAULT_SEVERITY", "CRITICAL")
+    SCAN_POLICY_DEFAULT_ACTION: str = os.getenv("SCAN_POLICY_DEFAULT_ACTION", "block")
 
 config = Config()
 

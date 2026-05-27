@@ -26,6 +26,7 @@ import com.playerservers.features.server.AntiCheatManager;
 import com.playerservers.features.server.CommandCooldownManager;
 import com.playerservers.features.server.PermissionManager;
 import com.playerservers.features.server.VIPPerksManager;
+import com.playerservers.features.performance.PerformanceProfilerManager;
 
 import net.md_5.bungee.api.plugin.Plugin;
 
@@ -60,6 +61,7 @@ public class PlayerServerPlugin extends Plugin {
     private CommandCooldownManager commandCooldownManager;
     private PermissionManager permissionManager;
     private VIPPerksManager vipPerksManager;
+    private PerformanceProfilerManager performanceProfilerManager;
     private InactivityShutdownTask inactivityShutdown;
 
     @Override
@@ -102,6 +104,7 @@ public class PlayerServerPlugin extends Plugin {
         commandCooldownManager = new CommandCooldownManager(this);
         permissionManager = new PermissionManager(this);
         vipPerksManager = new VIPPerksManager(this);
+        performanceProfilerManager = new PerformanceProfilerManager(this);
         inactivityShutdown = new InactivityShutdownTask(this);
 
         getProxy().getPluginManager().registerCommand(this, new ServerCommand(this));
@@ -125,6 +128,7 @@ public class PlayerServerPlugin extends Plugin {
         new com.playerservers.features.server.PermissionManager.PermissionCommands(this, permissionManager);
         new com.playerservers.features.server.VIPPerksManager.VIPCommands(this, vipPerksManager);
         getProxy().getPluginManager().registerCommand(this, new VIPPerksManager.VIPCommands.VIPAdminCommands(vipPerksManager));
+        new PerformanceProfilerManager.PerformanceCommand(this, performanceProfilerManager);
 
         getProxy().getPluginManager().registerListener(this, activityRewardListener);
         getProxy().getPluginManager().registerListener(this, new PluginMessageListener(this));
@@ -168,4 +172,5 @@ public class PlayerServerPlugin extends Plugin {
     public CommandCooldownManager getCommandCooldownManager() { return commandCooldownManager; }
     public PermissionManager getPermissionManager() { return permissionManager; }
     public VIPPerksManager getVipPerksManager() { return vipPerksManager; }
+    public PerformanceProfilerManager getPerformanceProfilerManager() { return performanceProfilerManager; }
 }

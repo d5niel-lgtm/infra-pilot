@@ -80,6 +80,7 @@ const CategoryManager = require('./modules/categoryManager');
 const TopicRotation = require('./modules/topicRotation');
 const StatsGraphs = require('./modules/statsGraphs');
 const VerificationLevels = require('./modules/verificationLevels');
+const CodeReviewBot = require('./modules/codeReviewBot');
 
 // --- Utility Functions ---
 function loadServerLimits() {
@@ -200,6 +201,7 @@ const categoryManager = new CategoryManager(client);
 const topicRotation = new TopicRotation(client);
 const statsGraphs = new StatsGraphs(client);
 const verificationLevels = new VerificationLevels(client);
+const codeReviewBot = new CodeReviewBot(client);
 
 // --- Helper Functions for Message Handling ---
 async function handleEmailInput(message, userState) {
@@ -862,6 +864,17 @@ async function registerCommands() {
           ]
         }
       ]
+    },
+    {
+      name: 'codereview',
+      description: 'AI Code Review commands',
+      type: 1,
+      options: [
+        { name: 'config', description: 'View code review configuration', type: 1 },
+        { name: 'history', description: 'View recent code review history', type: 1 },
+        { name: 'enable', description: 'Enable code review for this server', type: 1 },
+        { name: 'disable', description: 'Disable code review for this server', type: 1 }
+      ]
     }
   ];
 
@@ -964,6 +977,7 @@ client.on('interactionCreate', async (interaction) => {
     categoryManager.handleCommand(interaction);
     verificationLevels.handleCommand(interaction);
     statsGraphs.handleCommand(interaction);
+    codeReviewBot.handleCommand(interaction);
 
     if (interaction.commandName === 'dashboard') {
       dashboard.handleDashboardCommand(interaction);
@@ -1009,6 +1023,7 @@ client.on('interactionCreate', async (interaction) => {
     messageFilter.handleButton(interaction);
     verificationSystem.handleButton(interaction);
     serverStatus.handleButton(interaction);
+    codeReviewBot.handleButton(interaction);
 
     return;
   }
@@ -1083,6 +1098,32 @@ client.on('messageCreate', async (message) => {
   }
 
   customCommands.handleMessage(message);
+});
+
+// --- Webhook Server for Code Review ---
+const http = require('http');
+const WEBHOOK_PORT = parseInt(process.env.CODE_REVIEW_WEBHOOK_PORT) || 3000;
+const webhookServer = http.createServer(async (req, res) => {
+  if (req.method === 'POST' && req.url === '/webhook/github') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const parsed = JSON.parse(body);
+        req.body = parsed;
+        await codeReviewBot.handleWebhook(req, res);
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+webhookServer.listen(WEBHOOK_PORT, () => {
+  console.log(`[Webhook] GitHub webhook server listening on port ${WEBHOOK_PORT}`);
 });
 
 // --- Discord Bot Login ---

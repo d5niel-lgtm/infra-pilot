@@ -15,6 +15,10 @@ import rateLimit from 'express-rate-limit';
 import { WebSocketServer, WebSocket } from 'ws';
 import { SERVER_PRESETS } from './presets.js';
 import openapiSpec from './openapi.js';
+import { bulkEngine } from './bulk-operations.js';
+import { analyzeConfiguration } from './config-advice-engine.js';
+import * as pluginRegistry from './plugin-registry.js';
+import * as changeApproval from './change-approval-engine.js';
 
 dotenv.config({ path: '.env.local' });
 
@@ -2461,6 +2465,421 @@ app.get('/api/billing/rates', verifyAuth, async (req: Request, res: Response) =>
 });
 
 // ============================================================================
+// FEATURE 32: KNOWLEDGE BASE ROUTES
+// ============================================================================
+
+import * as kb from './knowledge-base.js';
+
+app.get('/api/kb/articles', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const articles = await kb.listArticles();
+    res.json(articles);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch articles' });
+  }
+});
+
+app.get('/api/kb/articles/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const article = await kb.getArticle(req.params.id);
+    if (!article) return res.status(404).json({ error: 'Article not found' });
+    res.json(article);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch article' });
+  }
+});
+
+app.post('/api/kb/articles', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const article = await kb.createArticle({ ...req.body, author: userId });
+    await logAudit(userId, 'knowledge_base:create', 'kb_article', article.id);
+    res.status(201).json(article);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create article' });
+  }
+});
+
+app.put('/api/kb/articles/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const article = await kb.updateArticle(req.params.id, req.body);
+    if (!article) return res.status(404).json({ error: 'Article not found' });
+    await logAudit((req as any).user.id, 'knowledge_base:update', 'kb_article', req.params.id);
+    res.json(article);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update article' });
+  }
+});
+
+app.delete('/api/kb/articles/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const ok = await kb.deleteArticle(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Article not found' });
+    await logAudit((req as any).user.id, 'knowledge_base:delete', 'kb_article', req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete article' });
+  }
+});
+
+app.get('/api/kb/search', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const q = req.query.q as string;
+    if (!q || q.length < 2) return res.json([]);
+    const articles = await kb.searchArticles(q);
+    res.json(articles);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to search articles' });
+  }
+});
+
+app.get('/api/kb/categories', verifyAuth, async (_req: Request, res: Response) => {
+  try {
+    const categories = await kb.listCategories();
+    res.json(categories);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
+app.post('/api/kb/categories', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const category = await kb.createCategory(req.body);
+    res.status(201).json(category);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create category' });
+  }
+});
+
+app.delete('/api/kb/categories/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const ok = await kb.deleteCategory(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Category not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete category' });
+  }
+});
+
+// ============================================================================
+// FEATURE 33: ACTIVITY FEED ROUTES
+// ============================================================================
+
+import * as activity from './activity-feed.js';
+
+app.get('/api/activity', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const type = req.query.type as string;
+    const userId = req.query.userId as string;
+    const from = req.query.from as string;
+    const to = req.query.to as string;
+    const result = await activity.getEvents({ limit, offset, type, userId, from, to });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch activity feed' });
+  }
+});
+
+app.get('/api/activity/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const event = await activity.getEvent(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    res.json(event);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch activity event' });
+  }
+});
+
+app.get('/api/activity/export', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const format = (req.query.format as string) || 'json';
+    const type = req.query.type as string;
+    const userId = req.query.userId as string;
+    const from = req.query.from as string;
+    const to = req.query.to as string;
+    const output = await activity.exportEvents({ format: format as 'csv' | 'json', type, userId, from, to });
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=activity-export.csv');
+    } else {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename=activity-export.json');
+    }
+    res.send(output);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to export activity feed' });
+  }
+});
+
+// ============================================================================
+// FEATURE 35: CUSTOM DASHBOARD BUILDER ROUTES
+// ============================================================================
+
+import * as de from './dashboard-engine.js';
+
+app.get('/api/dashboards', verifyAuth, async (_req: Request, res: Response) => {
+  try {
+    const dashboards = await de.listDashboards();
+    res.json(dashboards);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch dashboards' });
+  }
+});
+
+app.get('/api/dashboards/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const dashboard = await de.getDashboard(req.params.id);
+    if (!dashboard) return res.status(404).json({ error: 'Dashboard not found' });
+    res.json(dashboard);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch dashboard' });
+  }
+});
+
+app.post('/api/dashboards', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const dashboard = await de.createDashboard(req.body);
+    res.status(201).json(dashboard);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create dashboard' });
+  }
+});
+
+app.put('/api/dashboards/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const dashboard = await de.updateDashboard(req.params.id, req.body);
+    if (!dashboard) return res.status(404).json({ error: 'Dashboard not found' });
+    res.json(dashboard);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update dashboard' });
+  }
+});
+
+app.delete('/api/dashboards/:id', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const ok = await de.deleteDashboard(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Dashboard not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete dashboard' });
+  }
+});
+
+app.get('/api/dashboards/:id/data', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const period = req.query.period as string;
+    const data = await de.getDashboardData(req.params.id, { period });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+  }
+});
+
+// ============================================================================
+// I18N TRANSLATION ROUTES
+// ============================================================================
+
+// GET /api/i18n/translations - List all translations
+app.get('/api/i18n/translations', verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const { data } = await supabase
+      .from('shared_config')
+      .select('value')
+      .eq('key', 'i18n_translations')
+      .single();
+    res.json(data?.value || {});
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch translations' });
+  }
+});
+
+// POST /api/i18n/translations - Submit a translation
+app.post('/api/i18n/translations', verifyAuth, async (req: Request, res: Response) => {
+  const { locale, key, value } = req.body;
+  if (!locale || !key || !value) {
+    return res.status(400).json({ error: 'locale, key, and value are required' });
+  }
+  try {
+    const { data } = await supabase
+      .from('shared_config')
+      .select('value')
+      .eq('key', 'i18n_translations')
+      .single();
+    const translations = (data?.value as Record<string, any>) || {};
+    if (!translations[locale]) translations[locale] = {};
+    translations[locale][key] = value;
+    await supabase
+      .from('shared_config')
+      .upsert({ key: 'i18n_translations', value: translations }, { onConflict: 'key' });
+    await logAudit((req as any).user.id, 'i18n:submit', 'translation', null, null, { locale, key });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save translation' });
+  }
+});
+
+// ============================================================================
+// THEME STUDIO ROUTES
+// ============================================================================
+
+const getThemes = async (userId: string): Promise<any[]> => {
+  const { data } = await supabase
+    .from('shared_config')
+    .select('value')
+    .eq('key', 'user_themes')
+    .single();
+  const all = (data?.value as any[]) || [];
+  return all.filter((t: any) => t.user_id === userId);
+};
+
+const setThemes = async (themes: any[]): Promise<void> => {
+  await supabase
+    .from('shared_config')
+    .upsert({ key: 'user_themes', value: themes }, { onConflict: 'key' });
+};
+
+// GET /api/themes - List themes for current user
+app.get('/api/themes', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  try {
+    const themes = await getThemes(userId);
+    res.json(themes);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch themes' });
+  }
+});
+
+// POST /api/themes - Save a new theme
+app.post('/api/themes', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { name, config } = req.body;
+  if (!name || !config) {
+    return res.status(400).json({ error: 'name and config are required' });
+  }
+  try {
+    const themes = await getThemes(userId);
+    const existing = themes.findIndex((t: any) => t.name === name);
+    const theme = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      name,
+      config,
+      published: false,
+      author: userId,
+      createdAt: new Date().toISOString(),
+    };
+    if (existing >= 0) {
+      themes[existing] = { ...themes[existing], ...theme };
+    } else {
+      themes.push(theme);
+    }
+    await setThemes(themes);
+    await logAudit(userId, 'theme:save', 'theme', theme.id, null, { name });
+    res.status(201).json(theme);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save theme' });
+  }
+});
+
+// GET /api/themes/:id - Get a specific theme
+app.get('/api/themes/:id', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  try {
+    const themes = await getThemes(userId);
+    const theme = themes.find((t: any) => t.id === id);
+    if (!theme) return res.status(404).json({ error: 'Theme not found' });
+    res.json(theme);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch theme' });
+  }
+});
+
+// DELETE /api/themes/:id - Delete a theme
+app.delete('/api/themes/:id', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  try {
+    let themes = await getThemes(userId);
+    themes = themes.filter((t: any) => t.id !== id);
+    await setThemes(themes);
+    await logAudit(userId, 'theme:delete', 'theme', id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete theme' });
+  }
+});
+
+// POST /api/themes/:id/publish - Publish theme to gallery
+app.post('/api/themes/:id/publish', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  try {
+    const themes = await getThemes(userId);
+    const index = themes.findIndex((t: any) => t.id === id);
+    if (index === -1) return res.status(404).json({ error: 'Theme not found' });
+    themes[index].published = !themes[index].published;
+    await setThemes(themes);
+    await logAudit(userId, 'theme:publish', 'theme', id, null, { published: themes[index].published });
+    res.json(themes[index]);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to toggle theme publication' });
+  }
+});
+
+// ============================================================================
+// BULK OPERATIONS ROUTES
+// ============================================================================
+
+// POST /api/bulk/execute - Execute a bulk action
+app.post('/api/bulk/execute', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { action, ids, params } = req.body;
+  if (!action || !ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'action and ids array are required' });
+  }
+  try {
+    const job = await bulkEngine.execute(action, userId, ids, params || {});
+    res.status(202).json({
+      batchId: job.batchId,
+      status: job.status,
+      progress: job.progress,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to execute bulk action' });
+  }
+});
+
+// GET /api/bulk/:batchId - Get bulk action status
+app.get('/api/bulk/:batchId', verifyAuth, async (req: Request, res: Response) => {
+  const { batchId } = req.params;
+  try {
+    if (batchId === 'history') {
+      return res.json(bulkEngine.getHistory());
+    }
+    const job = await bulkEngine.getStatus(batchId);
+    if (!job) return res.status(404).json({ error: 'Batch not found' });
+    res.json(job);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch status' });
+  }
+});
+
+// POST /api/bulk/:batchId/undo - Rollback a bulk action
+app.post('/api/bulk/:batchId/undo', verifyAuth, async (req: Request, res: Response) => {
+  const { batchId } = req.params;
+  try {
+    const success = await bulkEngine.undo(batchId);
+    if (!success) return res.status(404).json({ error: 'Batch not found or already rolled back' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to undo bulk action' });
+  }
+});
+
+// ============================================================================
 // OPENAPI / SWAGGER DOCS
 // ============================================================================
 
@@ -2482,6 +2901,348 @@ SwaggerUIBundle({ url: '/api/openapi.json', dom_id: '#swagger-ui' });
 });
 
 // ============================================================================
+// AI CONFIG ADVISOR ROUTES
+// ============================================================================
+
+// GET /api/config/:appId/advice - Analyze config against best practices
+app.get('/api/config/:appId/advice', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+
+  try {
+    const { data: app, error } = await supabase
+      .from('docker_apps')
+      .select('*')
+      .eq('id', appId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !app) return res.status(404).json({ error: 'App not found' });
+
+    // Attempt to read config files from container
+    const files: Record<string, string> = {};
+    if (app.container_id) {
+      const configPaths = ['/server.properties', '/bukkit.yml', '/spigot.yml', '/paper.yml', '/config.yml', '/application.yml', '/application.properties'];
+      for (const fp of configPaths) {
+        try {
+          const { stdout } = await execAsync(`docker exec ${app.container_id} cat ${fp} 2>/dev/null`).catch(() => ({ stdout: '' }));
+          if (stdout) files[fp] = stdout;
+        } catch {}
+      }
+    }
+
+    const result = analyzeConfiguration({ ...app, appId }, files);
+    res.json({
+      appId,
+      analyzedAt: new Date().toISOString(),
+      total: result.summary.total,
+      critical: result.summary.critical,
+      warning: result.summary.warning,
+      info: result.summary.info,
+      suggestions: result.suggestions,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to analyze configuration' });
+  }
+});
+
+// POST /api/config/:appId/advice/:suggestionId/apply - Apply a suggestion
+app.post('/api/config/:appId/advice/:suggestionId/apply', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId, suggestionId } = req.params;
+
+  try {
+    const { data: app, error } = await supabase
+      .from('docker_apps')
+      .select('*')
+      .eq('id', appId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !app) return res.status(404).json({ error: 'App not found' });
+
+    const files: Record<string, string> = {};
+    if (app.container_id) {
+      const configPaths = ['/server.properties', '/bukkit.yml', '/spigot.yml', '/paper.yml', '/config.yml', '/application.yml', '/application.properties'];
+      for (const fp of configPaths) {
+        try {
+          const { stdout } = await execAsync(`docker exec ${app.container_id} cat ${fp} 2>/dev/null`).catch(() => ({ stdout: '' }));
+          if (stdout) files[fp] = stdout;
+        } catch {}
+      }
+    }
+
+    const result = analyzeConfiguration({ ...app, appId }, files);
+    const suggestion = result.suggestions.find(s => s.id === suggestionId);
+    if (!suggestion) return res.status(404).json({ error: 'Suggestion not found' });
+    if (!suggestion.autoFixable) return res.status(400).json({ error: 'This suggestion cannot be auto-fixed' });
+
+    await logAudit(userId, 'config:advice:apply', 'config_advice', `${appId}:${suggestionId}`, null, { title: suggestion.title, fixCommand: suggestion.fixCommand });
+    res.json({ success: true, message: `Applied: ${suggestion.title}` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to apply suggestion' });
+  }
+});
+
+// ============================================================================
+// PLUGIN MARKETPLACE ROUTES
+// ============================================================================
+
+// GET /api/plugins - List all plugins
+app.get('/api/plugins', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const appId = req.query.appId as string;
+  try {
+    const plugins = await pluginRegistry.listPlugins(userId, appId);
+    res.json(plugins);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch plugins' });
+  }
+});
+
+// GET /api/plugins/:id - Get plugin details
+app.get('/api/plugins/:id', verifyAuth, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const appId = req.query.appId as string;
+  try {
+    const plugin = await pluginRegistry.getPlugin(id, undefined, appId);
+    if (!plugin) return res.status(404).json({ error: 'Plugin not found' });
+    res.json(plugin);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch plugin' });
+  }
+});
+
+// POST /api/plugins/:id/install - Install a plugin for an app
+app.post('/api/plugins/:id/install', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  const { appId } = req.body;
+
+  if (!appId) return res.status(400).json({ error: 'appId is required' });
+
+  try {
+    const { data: app, error: appError } = await supabase
+      .from('docker_apps')
+      .select('id')
+      .eq('id', appId)
+      .eq('user_id', userId)
+      .single();
+
+    if (appError || !app) return res.status(404).json({ error: 'App not found' });
+
+    await pluginRegistry.installPlugin(id, appId, userId);
+    await logAudit(userId, 'plugin:install', 'plugin', id, null, { appId });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to install plugin' });
+  }
+});
+
+// POST /api/plugins/:id/uninstall - Uninstall a plugin from an app
+app.post('/api/plugins/:id/uninstall', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { id } = req.params;
+  const { appId } = req.body;
+
+  if (!appId) return res.status(400).json({ error: 'appId is required' });
+
+  try {
+    await pluginRegistry.uninstallPlugin(id, appId);
+    await logAudit(userId, 'plugin:uninstall', 'plugin', id, null, { appId });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to uninstall plugin' });
+  }
+});
+
+// POST /api/plugins - Publish a new plugin
+app.post('/api/plugins', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { name, description, version, author, category, tags, iconUrl, homepage } = req.body;
+
+  if (!name || !description || !version || !author || !category) {
+    return res.status(400).json({ error: 'name, description, version, author, and category are required' });
+  }
+
+  try {
+    const plugin = await pluginRegistry.publishPlugin({
+      id: crypto.randomUUID(),
+      name,
+      description,
+      version,
+      author,
+      category,
+      tags: tags || [],
+      downloads: 0,
+      iconUrl,
+      homepage,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    await logAudit(userId, 'plugin:publish', 'plugin', plugin.id, null, { name, version, category });
+    res.status(201).json(plugin);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to publish plugin' });
+  }
+});
+
+// ============================================================================
+// COLLABORATIVE TERMINAL ROUTES
+// ============================================================================
+
+const terminalSessions = new Map<string, { id: string; appId: string; createdBy: string; createdAt: string; users: Map<string, { id: string; displayName: string; cursor: { row: number; col: number }; joinedAt: string }> }>();
+
+// POST /api/terminal/sessions - Create a terminal session
+app.post('/api/terminal/sessions', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.body;
+
+  if (!appId) return res.status(400).json({ error: 'appId is required' });
+
+  try {
+    const { data: app, error: appError } = await supabase
+      .from('docker_apps')
+      .select('id')
+      .eq('id', appId)
+      .eq('user_id', userId)
+      .single();
+
+    if (appError || !app) return res.status(404).json({ error: 'App not found' });
+
+    const sessionId = crypto.randomUUID();
+    terminalSessions.set(sessionId, {
+      id: sessionId,
+      appId,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+      users: new Map(),
+    });
+
+    res.status(201).json({
+      id: sessionId,
+      appId,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+      users: [],
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create terminal session' });
+  }
+});
+
+// GET /api/terminal/sessions/:id - Get session details
+app.get('/api/terminal/sessions/:id', verifyAuth, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const session = terminalSessions.get(id);
+
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+
+  res.json({
+    id: session.id,
+    appId: session.appId,
+    createdBy: session.createdBy,
+    createdAt: session.createdAt,
+    users: Array.from(session.users.values()),
+  });
+});
+
+// ============================================================================
+// CHANGE APPROVAL WORKFLOW ROUTES
+// ============================================================================
+
+// POST /api/change-requests - Create a change request
+app.post('/api/change-requests', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId, action, reason, details, isBreakGlass } = req.body;
+
+  if (!appId || !action || !reason) {
+    return res.status(400).json({ error: 'appId, action, and reason are required' });
+  }
+
+  try {
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('display_name')
+      .eq('id', userId)
+      .single();
+
+    const userName = userProfile?.display_name || 'Unknown';
+    const request = changeApproval.createChangeRequest(userId, userName, appId, action, reason, details || '', isBreakGlass || false);
+
+    await logAudit(userId, 'change_request:create', 'change_request', request.id, null, { appId, action, status: request.status, isBreakGlass: request.isBreakGlass });
+    res.status(201).json(request);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create change request' });
+  }
+});
+
+// GET /api/change-requests - List change requests
+app.get('/api/change-requests', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const status = req.query.status as string;
+  const appId = req.query.appId as string;
+
+  try {
+    const requests = changeApproval.listChangeRequests({ status, userId, appId });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch change requests' });
+  }
+});
+
+// POST /api/change-requests/:id/approve - Approve a change request
+app.post('/api/change-requests/:id/approve', verifyAuth, async (req: Request, res: Response) => {
+  const reviewerId = (req as any).user.id;
+  const { id } = req.params;
+
+  try {
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('display_name')
+      .eq('id', reviewerId)
+      .single();
+
+    const reviewerName = userProfile?.display_name || 'Unknown';
+    const result = changeApproval.approveChangeRequest(id, reviewerId, reviewerName);
+
+    if (!result) return res.status(404).json({ error: 'Change request not found or already processed' });
+
+    await logAudit(reviewerId, 'change_request:approve', 'change_request', id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to approve change request' });
+  }
+});
+
+// POST /api/change-requests/:id/reject - Reject a change request
+app.post('/api/change-requests/:id/reject', verifyAuth, async (req: Request, res: Response) => {
+  const reviewerId = (req as any).user.id;
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  if (!reason) return res.status(400).json({ error: 'Rejection reason is required' });
+
+  try {
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('display_name')
+      .eq('id', reviewerId)
+      .single();
+
+    const reviewerName = userProfile?.display_name || 'Unknown';
+    const result = changeApproval.rejectChangeRequest(id, reviewerId, reviewerName, reason);
+
+    if (!result) return res.status(404).json({ error: 'Change request not found or already processed' });
+
+    await logAudit(reviewerId, 'change_request:reject', 'change_request', id, null, { reason });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reject change request' });
+  }
+});
+
+// ============================================================================
 // START SERVER
 // ============================================================================
 
@@ -2489,9 +3250,99 @@ const httpServer = http.createServer(app);
 
 const wss = new WebSocketServer({ server: httpServer });
 
+interface TerminalRoom {
+  sessionId: string;
+  appId: string;
+  clients: Map<WebSocket, { userId: string; displayName: string }>;
+  output: string[];
+}
+
+const terminalRooms = new Map<string, TerminalRoom>();
+
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url || '', 'http://localhost');
   const appId = url.searchParams.get('appId');
+  const sessionId = url.searchParams.get('sessionId');
+  const displayName = url.searchParams.get('displayName') || 'Anonymous';
+
+  // Collaborative Terminal connection
+  if (sessionId) {
+    let room = terminalRooms.get(sessionId);
+    if (!room) {
+      room = { sessionId, appId: appId || '', clients: new Map(), output: [] };
+      terminalRooms.set(sessionId, room);
+    }
+
+    const userId = 'user-' + Math.random().toString(36).slice(2, 8);
+    room.clients.set(ws, { userId, displayName });
+
+    // Send join notification
+    const joinMsg = JSON.stringify({ type: 'user-joined', userId, displayName, users: Array.from(room.clients.values()).map(c => c) });
+    for (const [client] of room.clients) {
+      if (client.readyState === WebSocket.OPEN) client.send(joinMsg);
+    }
+
+    // Send existing output to new user
+    ws.send(JSON.stringify({ type: 'history', lines: room.output }));
+
+    ws.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+
+        if (msg.type === 'terminal-input') {
+          const line = `[${displayName}] $ ${msg.text}`;
+          room!.output.push(line);
+          if (room!.output.length > 1000) room!.output.shift();
+
+          for (const [client] of room!.clients) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'terminal-output', line, userId, displayName }));
+            }
+          }
+        } else if (msg.type === 'cursor') {
+          const cursorMsg = JSON.stringify({ type: 'cursor-update', userId, displayName, cursor: msg.cursor });
+          for (const [client, info] of room!.clients) {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(cursorMsg);
+            }
+          }
+        } else if (msg.type === 'chat') {
+          const chatMsg = JSON.stringify({ type: 'chat-message', userId, displayName, text: msg.text, timestamp: new Date().toISOString() });
+          for (const [client] of room!.clients) {
+            if (client.readyState === WebSocket.OPEN) client.send(chatMsg);
+          }
+        } else if (msg.type === 'exec' && appId) {
+          // Forward command execution
+          const line = `[${displayName}] $ ${msg.command}`;
+          room!.output.push(line);
+          if (room!.output.length > 1000) room!.output.shift();
+
+          for (const [client] of room!.clients) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'terminal-output', line, userId, displayName }));
+            }
+          }
+        }
+      } catch {}
+    });
+
+    ws.on('close', () => {
+      if (room) {
+        room.clients.delete(ws);
+        const leaveMsg = JSON.stringify({ type: 'user-left', userId, displayName, users: Array.from(room.clients.values()).map(c => c) });
+        for (const [client] of room.clients) {
+          if (client.readyState === WebSocket.OPEN) client.send(leaveMsg);
+        }
+        if (room.clients.size === 0) {
+          terminalRooms.delete(sessionId);
+        }
+      }
+    });
+
+    return;
+  }
+
+  // Original log streaming (for backward compatibility)
   if (!appId) { ws.close(); return; }
 
   ws.on('message', async (data) => {

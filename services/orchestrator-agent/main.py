@@ -62,6 +62,18 @@ async def load_cogs():
         "cogs.git_deployer",
         "cogs.database_manager",
         "cogs.modpack_installer",
+        "cogs.ai_resource_optimizer",
+        "cogs.ai_threat_detection",
+        "cogs.ai_capacity_forecaster",
+        "cogs.gitops_sync",
+        "cogs.kubernetes_manager",
+        "cogs.edge_compute",
+        "cogs.faas_manager",
+        "cogs.multi_cloud_cost",
+        "cogs.disaster_recovery",
+        "cogs.runbook_automation",
+        "cogs.synthetic_monitoring",
+        "cogs.container_scanner",
     ]
     for cog in cog_list + new_cogs:
         try:
@@ -93,6 +105,10 @@ async def start_webhook_server(bot):
     if cog:
         app.router.add_post('/webhook/github/{deploy_id}', cog.handle_webhook)
         app.router.add_post('/webhook/github', cog.handle_webhook)
+
+    gitops_cog = bot.get_cog('GitOpsSync')
+    if gitops_cog:
+        app.router.add_post('/webhook/gitops', gitops_cog.handle_webhook)
 
     runner = web.AppRunner(app)
     await runner.setup()

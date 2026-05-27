@@ -48,6 +48,13 @@ death_penalty:
 maintenance:
   kick_message: "&cServer is under maintenance. Please check back later!"
 
+performance_profiler:
+  enabled: true
+  history_length: 1200
+  slow_tick_threshold_ms: 50
+  auto_profile_interval_seconds: 20
+  max_suggestions: 20
+
 anticheat:
   max_alerts_before_flag: 5
 

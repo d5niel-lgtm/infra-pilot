@@ -17,6 +17,9 @@
     "test:coverage": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' NODE_V8_COVERAGE=coverage/v8 node --test --experimental-test-coverage --loader ts-node/esm tests/**/*.test.ts",
     "test:api": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' node --test --loader ts-node/esm tests/integration/**/*.test.ts",
     "test:unit": "NODE_ENV=test TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER_OPTIONS='{\"module\":\"ESNext\",\"moduleResolution\":\"bundler\",\"allowImportingTsExtensions\":true}' node --test --loader ts-node/esm tests/unit/**/*.test.ts",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "desktop:dev": "zig build dev",
     "desktop:run": "zig build run",
     "desktop:package": "zig build package",
@@ -31,12 +34,18 @@
     "express": "^4.22.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-intl": "^7.1.6",
     "react-router-dom": "^6.24.0",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.1.0",
     "pg": "^8.9.0",
     "express-rate-limit": "^8.5.2",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "@tauri-apps/plugin-notification": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
@@ -58,6 +67,7 @@
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
     "vite": "^6.2.0",
+    "@tauri-apps/cli": "^2.0.0",
     "@playwright/test": "^1.40.0",
     "playwright": "^1.40.0"
   }

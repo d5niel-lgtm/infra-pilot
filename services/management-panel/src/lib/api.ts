@@ -436,9 +436,228 @@ class APIClient {
     return res.data;
   }
 
+  // Knowledge Base API
+  async listArticles(): Promise<import('./types').KBArticle[]> {
+    const res = await this.api.get('/api/kb/articles');
+    return res.data;
+  }
+
+  async getArticle(id: string): Promise<import('./types').KBArticle> {
+    const res = await this.api.get(`/api/kb/articles/${id}`);
+    return res.data;
+  }
+
+  async createArticle(data: Partial<import('./types').KBArticle>): Promise<import('./types').KBArticle> {
+    const res = await this.api.post('/api/kb/articles', data);
+    return res.data;
+  }
+
+  async updateArticle(id: string, data: Partial<import('./types').KBArticle>): Promise<import('./types').KBArticle> {
+    const res = await this.api.put(`/api/kb/articles/${id}`, data);
+    return res.data;
+  }
+
+  async deleteArticle(id: string): Promise<void> {
+    await this.api.delete(`/api/kb/articles/${id}`);
+  }
+
+  async searchArticles(query: string): Promise<import('./types').KBArticle[]> {
+    const res = await this.api.get('/api/kb/search', { params: { q: query } });
+    return res.data;
+  }
+
+  async getCategories(): Promise<import('./types').KBCategory[]> {
+    const res = await this.api.get('/api/kb/categories');
+    return res.data;
+  }
+
+  async createCategory(data: Partial<import('./types').KBCategory>): Promise<import('./types').KBCategory> {
+    const res = await this.api.post('/api/kb/categories', data);
+    return res.data;
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    await this.api.delete(`/api/kb/categories/${id}`);
+  }
+
+  // Activity Feed API
+  async getActivityFeed(params: { limit?: number; offset?: number; type?: string; userId?: string; from?: string; to?: string }): Promise<{ events: import('./types').ActivityEvent[]; total: number }> {
+    const res = await this.api.get('/api/activity', { params });
+    return res.data;
+  }
+
+  async getActivityDetail(id: string): Promise<import('./types').ActivityEvent> {
+    const res = await this.api.get(`/api/activity/${id}`);
+    return res.data;
+  }
+
+  async exportActivity(params: { format?: 'csv' | 'json'; type?: string; userId?: string; from?: string; to?: string }): Promise<Blob> {
+    const res = await this.api.get('/api/activity/export', { params, responseType: 'blob' });
+    return res.data;
+  }
+
+  // Dashboard Builder API
+  async listDashboards(): Promise<import('./types').DashboardDefinition[]> {
+    const res = await this.api.get('/api/dashboards');
+    return res.data;
+  }
+
+  async getDashboard(id: string): Promise<import('./types').DashboardDefinition> {
+    const res = await this.api.get(`/api/dashboards/${id}`);
+    return res.data;
+  }
+
+  async createDashboard(data: Partial<import('./types').DashboardDefinition>): Promise<import('./types').DashboardDefinition> {
+    const res = await this.api.post('/api/dashboards', data);
+    return res.data;
+  }
+
+  async updateDashboard(id: string, data: Partial<import('./types').DashboardDefinition>): Promise<import('./types').DashboardDefinition> {
+    const res = await this.api.put(`/api/dashboards/${id}`, data);
+    return res.data;
+  }
+
+  async deleteDashboard(id: string): Promise<void> {
+    await this.api.delete(`/api/dashboards/${id}`);
+  }
+
+  async getDashboardData(id: string, params?: { period?: string }): Promise<any> {
+    const res = await this.api.get(`/api/dashboards/${id}/data`, { params });
+    return res.data;
+  }
+
+  // AI Config Advisor
+  async getConfigAdvice(appId: string): Promise<any> {
+    const res = await this.api.get(`/api/config/${appId}/advice`);
+    return res.data;
+  }
+
+  async applyConfigAdvice(appId: string, suggestionId: string): Promise<any> {
+    const res = await this.api.post(`/api/config/${appId}/advice/${suggestionId}/apply`);
+    return res.data;
+  }
+
+  // Plugin Marketplace
+  async listPlugins(appId?: string): Promise<any[]> {
+    const params: any = {};
+    if (appId) params.appId = appId;
+    const res = await this.api.get('/api/plugins', { params });
+    return res.data;
+  }
+
+  async getPlugin(id: string, appId?: string): Promise<any> {
+    const params: any = {};
+    if (appId) params.appId = appId;
+    const res = await this.api.get(`/api/plugins/${id}`, { params });
+    return res.data;
+  }
+
+  async installPlugin(id: string, appId: string): Promise<any> {
+    const res = await this.api.post(`/api/plugins/${id}/install`, { appId });
+    return res.data;
+  }
+
+  async uninstallPlugin(id: string, appId: string): Promise<any> {
+    const res = await this.api.post(`/api/plugins/${id}/uninstall`, { appId });
+    return res.data;
+  }
+
+  async publishPlugin(data: any): Promise<any> {
+    const res = await this.api.post('/api/plugins', data);
+    return res.data;
+  }
+
+  // Collaborative Terminal
+  async createTerminalSession(appId: string): Promise<any> {
+    const res = await this.api.post('/api/terminal/sessions', { appId });
+    return res.data;
+  }
+
+  async getTerminalSession(sessionId: string): Promise<any> {
+    const res = await this.api.get(`/api/terminal/sessions/${sessionId}`);
+    return res.data;
+  }
+
+  // Change Approval Workflow
+  async createChangeRequest(data: any): Promise<any> {
+    const res = await this.api.post('/api/change-requests', data);
+    return res.data;
+  }
+
+  async listChangeRequests(filter?: { status?: string; appId?: string }): Promise<any[]> {
+    const params: any = {};
+    if (filter?.status) params.status = filter.status;
+    if (filter?.appId) params.appId = filter.appId;
+    const res = await this.api.get('/api/change-requests', { params });
+    return res.data;
+  }
+
+  async approveChangeRequest(id: string): Promise<any> {
+    const res = await this.api.post(`/api/change-requests/${id}/approve`);
+    return res.data;
+  }
+
+  async rejectChangeRequest(id: string, reason: string): Promise<any> {
+    const res = await this.api.post(`/api/change-requests/${id}/reject`, { reason });
+    return res.data;
+  }
+
   // Health check
   async health(): Promise<{ status: string }> {
     const res = await this.api.get('/health');
+    return res.data;
+  }
+}
+
+  // i18n endpoints
+  async getTranslations(): Promise<any> {
+    const res = await this.api.get('/api/i18n/translations');
+    return res.data;
+  }
+
+  async submitTranslation(data: { locale: string; key: string; value: string }): Promise<any> {
+    const res = await this.api.post('/api/i18n/translations', data);
+    return res.data;
+  }
+
+  // Theme Studio endpoints
+  async listThemes(): Promise<any[]> {
+    const res = await this.api.get('/api/themes');
+    return res.data;
+  }
+
+  async getTheme(id: string): Promise<any> {
+    const res = await this.api.get(`/api/themes/${id}`);
+    return res.data;
+  }
+
+  async saveTheme(data: { name: string; config: any }): Promise<any> {
+    const res = await this.api.post('/api/themes', data);
+    return res.data;
+  }
+
+  async deleteTheme(id: string): Promise<void> {
+    await this.api.delete(`/api/themes/${id}`);
+  }
+
+  async publishTheme(id: string): Promise<any> {
+    const res = await this.api.post(`/api/themes/${id}/publish`);
+    return res.data;
+  }
+
+  // Bulk Operations endpoints
+  async bulkAction(action: string, ids: string[], params: any): Promise<any> {
+    const res = await this.api.post('/api/bulk/execute', { action, ids, params });
+    return res.data;
+  }
+
+  async getBulkActionStatus(batchId: string): Promise<any> {
+    const res = await this.api.get(`/api/bulk/${batchId}`);
+    return res.data;
+  }
+
+  async undoBulkAction(batchId: string): Promise<any> {
+    const res = await this.api.post(`/api/bulk/${batchId}/undo`);
     return res.data;
   }
 }

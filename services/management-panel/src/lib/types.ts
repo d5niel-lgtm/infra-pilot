@@ -330,3 +330,200 @@ export interface DeploymentEvent {
   timestamp: string;
   error?: string;
 }
+
+// ============================================================================
+// Knowledge Base Types
+// ============================================================================
+
+export interface KBArticle {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  author: string;
+  authorName?: string;
+  created_at: string;
+  updated_at: string;
+  published: boolean;
+  resourceLinks?: string[];
+}
+
+export interface KBCategory {
+  id: string;
+  name: string;
+  parentId?: string;
+  description?: string;
+  articleCount?: number;
+}
+
+// ============================================================================
+// Activity Feed Types
+// ============================================================================
+
+export type ActivityEventType =
+  | 'app:create' | 'app:update' | 'app:delete'
+  | 'app:start' | 'app:stop' | 'app:restart'
+  | 'backup:create' | 'backup:update' | 'backup:delete'
+  | 'config:update' | 'deployment' | 'alert'
+  | 'maintenance' | 'user:login' | 'user:logout'
+  | 'database:create' | 'database:delete'
+  | 'knowledge_base:create' | 'knowledge_base:update' | 'knowledge_base:delete';
+
+export interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  userId: string;
+  userName?: string;
+  description: string;
+  metadata?: Record<string, any>;
+  timestamp: string;
+  severity: 'info' | 'warning' | 'error';
+}
+
+// ============================================================================
+// Dashboard Builder Types
+// ============================================================================
+
+export type PanelType = 'time-series' | 'stat' | 'log-list' | 'alert-list';
+
+export interface PanelDataSource {
+  type: 'metrics' | 'logs' | 'alerts' | 'backups' | 'apps';
+  query?: string;
+  aggregation?: string;
+  period?: string;
+}
+
+export interface DashboardPanel {
+  id: string;
+  type: PanelType;
+  title: string;
+  dataSource: PanelDataSource;
+  position: { x: number; y: number; w: number; h: number };
+  config: Record<string, any>;
+}
+
+export interface DashboardDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  panels: DashboardPanel[];
+  layout: { columns: number; rowHeight: number };
+  refreshInterval: number;
+  starred: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// AI Config Advisor Types
+// ============================================================================
+
+export interface ConfigAdviceSuggestion {
+  id: string;
+  severity: 'critical' | 'warning' | 'info';
+  category: string;
+  title: string;
+  description: string;
+  recommendation: string;
+  file?: string;
+  line?: number;
+  currentValue?: string;
+  suggestedValue?: string;
+  autoFixable: boolean;
+  fixCommand?: string;
+}
+
+export interface ConfigAdviceResult {
+  appId: string;
+  analyzedAt: string;
+  total: number;
+  critical: number;
+  warning: number;
+  info: number;
+  suggestions: ConfigAdviceSuggestion[];
+}
+
+// ============================================================================
+// Plugin Marketplace Types
+// ============================================================================
+
+export interface Plugin {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  author: string;
+  category: string;
+  tags: string[];
+  downloads: number;
+  iconUrl?: string;
+  readmeUrl?: string;
+  homepage?: string;
+  createdAt: string;
+  updatedAt: string;
+  installed: boolean;
+  installedVersion?: string;
+  installedAt?: string;
+  appId?: string;
+}
+
+export interface PluginPublishData {
+  name: string;
+  description: string;
+  version: string;
+  author: string;
+  category: string;
+  tags: string[];
+  iconUrl?: string;
+  homepage?: string;
+}
+
+// ============================================================================
+// Collaborative Terminal Types
+// ============================================================================
+
+export interface TerminalSession {
+  id: string;
+  appId: string;
+  createdBy: string;
+  createdAt: string;
+  users: TerminalUser[];
+}
+
+export interface TerminalUser {
+  id: string;
+  displayName: string;
+  cursor?: { row: number; col: number };
+  joinedAt: string;
+}
+
+// ============================================================================
+// Change Approval Types
+// ============================================================================
+
+export interface ChangeRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  appId: string;
+  action: string;
+  reason: string;
+  details: string;
+  status: 'pending' | 'approved' | 'rejected' | 'emergency';
+  reviewerId?: string;
+  reviewerName?: string;
+  rejectReason?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  expiresAt: string;
+  isBreakGlass: boolean;
+}
+
+export interface ChangeRequestInput {
+  appId: string;
+  action: string;
+  reason: string;
+  details: string;
+  isBreakGlass?: boolean;
+}

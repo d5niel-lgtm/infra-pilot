@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { apiClient } from '../lib/api';
 import { DockerApp, useConfig } from '../lib/types';
 import { toast } from 'sonner';
@@ -51,15 +52,15 @@ export const Dashboard = () => {
       {/* Header Section */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-slate-400">Overview of your infrastructure and applications</p>
+          <h1 className="text-3xl font-bold text-white mb-2"><FormattedMessage id="dashboard.title" /></h1>
+          <p className="text-slate-400"><FormattedMessage id="dashboard.subtitle" /></p>
         </div>
         <button
           onClick={handleCreateApp}
           className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
         >
           <span>+</span>
-          <span>Create New App</span>
+          <span><FormattedMessage id="dashboard.createApp" /></span>
         </button>
       </div>
 

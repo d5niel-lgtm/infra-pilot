@@ -9,6 +9,29 @@
   --skeuo-surface-dark: linear-gradient(180deg, #2a3343 0%, #1a2130 100%);
   --skeuo-shadow-raised: 0 10px 24px rgba(15, 23, 42, 0.2), 0 2px 5px rgba(15, 23, 42, 0.16);
   --skeuo-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -2px 3px rgba(15, 23, 42, 0.12);
+
+  --brand-primary: #6C5CE7;
+  --brand-primary-dark: #5A46CD;
+  --brand-secondary: #EC4899;
+  --brand-accent: #22D3EE;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
+  --text-primary: #171717;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --spacing-unit: 4px;
+  --border-radius: 8px;
+  --font-family: "Inter Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+.dark {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
 }
 
 .accent-text {
@@ -20,9 +43,9 @@
 }
 
 body {
-  font-family: "Inter Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  color: var(--color-dark);
-  background: var(--color-light);
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: var(--bg-primary);
 }
 
 .input-field {
@@ -62,7 +85,56 @@ body {
   @apply text-blue-500 hover:underline cursor-pointer font-medium;
 }
 
-/* Simple tooltip styling */
 .tooltip { position: relative; display: inline-block; }
 .tooltiptext { visibility: hidden; width: max-content; background: #111; color: #fff; text-align: center; padding: 6px 8px; border-radius: 6px; position: absolute; z-index: 1; bottom: 125%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.2s ease-in-out; white-space: nowrap; }
 .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+
+/* Accessibility: Focus-visible styles */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Accessibility: Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only:focus {
+  position: fixed;
+  width: auto;
+  height: auto;
+  padding: 8px 16px;
+  margin: 8px;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: #2563eb;
+  color: white;
+  border-radius: 8px;
+  z-index: 9999;
+}
+
+/* Accessibility: Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Theme engine: CSS variable transitions for live preview */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}

@@ -684,6 +684,23 @@ class IntegrationService:
         from alerts import AlertManager
         from announcements import AnnouncementScheduler
         from permissions import PermissionManager
+        from alert_fatigue import AlertFatigueReducer
+        from compliance_reports import ComplianceReportManager
+        from secrets_manager import SecretsManager
+        from siem_exporter import SIEMExporter
+        from gdpr_manager import GDPRDataManager
+        from log_analyzer import LogAnomalyDetector
+        from ai_assistant import AIAssistant
+        from backup_validator import BackupValidator
+        from ticket_triage import TicketTriage
+        from webhook_bus import WebhookEventBus
+        from api_gateway import APIGateway
+        from opentelemetry_exporter import OpenTelemetryExporter
+        from graphql_api import GraphQLHandler
+        from multi_region import MultiRegionManager
+        from cdn_waf import CDNWAFManager
+        from service_mesh import ServiceMeshManager
+        from workspaces import WorkspaceManager
         self.auth = AuthManager(self.config)
         self.user_profiles = UserProfileManager(self.config)
         self.message_bridge = MessageBridge(self.config)
@@ -692,11 +709,39 @@ class IntegrationService:
         self.alert_manager = AlertManager(self.config)
         self.announcement_scheduler = AnnouncementScheduler(self.config)
         self.permission_manager = PermissionManager(self.config)
+        self.alert_fatigue = AlertFatigueReducer(self.config)
+        self.compliance_reports = ComplianceReportManager(self.config)
+        self.secrets_manager = SecretsManager(self.config)
+        self.siem_exporter = SIEMExporter(self.config)
+        self.gdpr_manager = GDPRDataManager(self.config)
+        self.log_anomaly_detector = LogAnomalyDetector(self.config)
+        self.ai_assistant = AIAssistant(self.config)
+        self.backup_validator = BackupValidator(self.config)
+        self.ticket_triage = TicketTriage(self.config)
+        self.webhook_bus = WebhookEventBus(self.config)
+        self.api_gateway = APIGateway(self.config)
+        self.otel_exporter = OpenTelemetryExporter(self.config)
+        self.graphql_handler = GraphQLHandler(self.config)
+        self.multi_region = MultiRegionManager(self.config)
+        self.cdn_waf = CDNWAFManager(self.config)
+        self.service_mesh = ServiceMeshManager(self.config)
+        self.workspaces = WorkspaceManager(self.config)
         self._managers = {
             'auth': self.auth, 'user_profiles': self.user_profiles,
             'message_bridge': self.message_bridge, 'command_executor': self.command_executor,
             'event_broadcaster': self.event_broadcaster, 'alert_manager': self.alert_manager,
-            'announcement_scheduler': self.announcement_scheduler, 'permission_manager': self.permission_manager
+            'announcement_scheduler': self.announcement_scheduler, 'permission_manager': self.permission_manager,
+            'alert_fatigue': self.alert_fatigue, 'compliance_reports': self.compliance_reports,
+            'secrets_manager': self.secrets_manager, 'siem_exporter': self.siem_exporter,
+            'gdpr_manager': self.gdpr_manager,
+            'log_anomaly_detector': self.log_anomaly_detector,
+            'ai_assistant': self.ai_assistant,
+            'backup_validator': self.backup_validator,
+            'ticket_triage': self.ticket_triage,
+            'webhook_bus': self.webhook_bus, 'api_gateway': self.api_gateway,
+            'otel_exporter': self.otel_exporter, 'graphql_handler': self.graphql_handler,
+            'multi_region': self.multi_region, 'cdn_waf': self.cdn_waf,
+            'service_mesh': self.service_mesh, 'workspaces': self.workspaces
         }
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
