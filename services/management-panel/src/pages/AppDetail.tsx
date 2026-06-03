@@ -6,13 +6,18 @@ import { toast } from 'sonner';
 import { GitDeployManager } from '../components/GitDeployManager';
 import { DatabaseManager } from '../components/DatabaseManager';
 import { ModpackBrowser } from '../components/ModpackBrowser';
+import ConfigEditor from '../components/ConfigEditor';
+import { ConfigVersionControl } from '../components/ConfigVersionControl';
+import { LiveLogs } from '../components/LiveLogs';
+import AlertConfig from '../components/AlertConfig';
+import { ServerOperationsHub } from '../components/ServerOperationsHub';
 
 export const AppDetail = () => {
   const navigate = useNavigate();
   const { appId } = useParams();
   const [app, setApp] = useState<DockerApp | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'env' | 'volumes' | 'config' | 'settings' | 'deploy' | 'database' | 'modpacks'>(
+  const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'env' | 'volumes' | 'config' | 'settings' | 'deploy' | 'database' | 'modpacks' | 'operations' | 'diff' | 'alerts'>(
     'overview'
   );
   const [logs, setLogs] = useState<Array<any>>([]);
@@ -226,7 +231,7 @@ export const AppDetail = () => {
       <div>
         <div className="flex border-b border-slate-200 dark:border-slate-700 gap-4">
           {(
-            ['overview', 'logs', 'env', 'volumes', 'config', 'settings', 'deploy', 'database', 'modpacks'] as const
+            ['overview', 'operations', 'logs', 'env', 'volumes', 'config', 'diff', 'alerts', 'settings', 'deploy', 'database', 'modpacks'] as const
           ).map((tab) => (
             <button
               key={tab}
@@ -288,21 +293,16 @@ export const AppDetail = () => {
           )}
 
           {activeTab === 'logs' && (
-            <div className="bg-slate-900 dark:bg-slate-950 rounded-lg p-4 font-mono text-xs text-green-400 overflow-auto max-h-96">
-              {logsLoading ? (
-                <p>Loading logs...</p>
-              ) : logs.length === 0 ? (
-                <p className="text-slate-400">No logs available</p>
-              ) : (
-                <div className="space-y-1">
-                  {logs.map((log, idx) => (
-                    <div key={idx}>
-                      [{log.level}] {log.message}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <LiveLogs
+              appId={appId}
+              logs={logs.map((log, idx) => ({
+                id: String(log.id ?? idx),
+                timestamp: log.created_at || log.timestamp || new Date().toISOString(),
+                app: app.name,
+                level: (log.level || 'INFO').toUpperCase(),
+                message: log.message || String(log),
+              }))}
+            />
           )}
 
           {activeTab === 'env' && (
@@ -341,6 +341,18 @@ export const AppDetail = () => {
 
           {activeTab === 'config' && appId && (
             <ConfigEditor appId={appId} />
+          )}
+
+          {activeTab === 'operations' && (
+            <ServerOperationsHub app={app} onCloned={(clone) => navigate(`/apps/${clone.id}`)} />
+          )}
+
+          {activeTab === 'diff' && appId && (
+            <ConfigVersionControl appId={appId} />
+          )}
+
+          {activeTab === 'alerts' && (
+            <div className="rounded-lg bg-slate-900 p-4"><AlertConfig /></div>
           )}
 
           {activeTab === 'settings' && (
