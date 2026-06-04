@@ -4085,7 +4085,7 @@ wss.on('connection', (ws, req) => {
       terminalRooms.set(sessionId, room);
     }
 
-    const userId = 'user-' + Math.random().toString(36).slice(2, 8);
+    const userId = 'user-' + crypto.randomBytes(6).toString('hex');
     room.clients.set(ws, { userId, displayName });
 
     // Send join notification
