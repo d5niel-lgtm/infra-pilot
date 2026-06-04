@@ -29,11 +29,15 @@ router.get('/api/compliance/summary', (req, res) => {
 router.get('/api/compliance/alerts', (req, res) => res.json({ alerts }));
 router.post('/api/compliance/scan', (req, res) => {
   const { framework } = req.body;
-  if (framework && Object.prototype.hasOwnProperty.call(postures, framework)) {
-    postures[framework].last_scan = new Date().toISOString();
-    postures[framework].overall_score = Math.min(100, postures[framework].overall_score + Math.floor(Math.random() * 5));
-    if (postures[framework].overall_score >= 80) postures[framework].status = 'compliant';
-    res.json({ status: `${framework} scan complete`, score: postures[framework].overall_score });
+  const safeFramework = (typeof framework === 'string' && Object.prototype.hasOwnProperty.call(postures, framework))
+    ? framework
+    : null;
+
+  if (safeFramework) {
+    postures[safeFramework].last_scan = new Date().toISOString();
+    postures[safeFramework].overall_score = Math.min(100, postures[safeFramework].overall_score + Math.floor(Math.random() * 5));
+    if (postures[safeFramework].overall_score >= 80) postures[safeFramework].status = 'compliant';
+    res.json({ status: `${safeFramework} scan complete`, score: postures[safeFramework].overall_score });
   } else {
     Object.keys(postures).forEach(k => { postures[k].last_scan = new Date().toISOString(); postures[k].overall_score = Math.min(100, postures[k].overall_score + Math.floor(Math.random() * 3)); });
     res.json({ status: 'Full scan complete', frameworks: Object.keys(postures).length });
