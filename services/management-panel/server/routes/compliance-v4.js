@@ -29,7 +29,7 @@ router.get('/api/compliance/summary', (req, res) => {
 router.get('/api/compliance/alerts', (req, res) => res.json({ alerts }));
 router.post('/api/compliance/scan', (req, res) => {
   const { framework } = req.body;
-  if (framework && postures[framework]) {
+  if (framework && Object.prototype.hasOwnProperty.call(postures, framework)) {
     postures[framework].last_scan = new Date().toISOString();
     postures[framework].overall_score = Math.min(100, postures[framework].overall_score + Math.floor(Math.random() * 5));
     if (postures[framework].overall_score >= 80) postures[framework].status = 'compliant';
