@@ -528,6 +528,76 @@ export interface ChangeRequestInput {
   isBreakGlass?: boolean;
 }
 
+
+// ============================================================================
+// Server Operations Feature Types
+// ============================================================================
+
+export interface ServerCloneRequest {
+  name: string;
+  includeFiles?: boolean;
+  includeBackups?: boolean;
+}
+
+export interface ServerPermissionSet {
+  start: boolean;
+  stop: boolean;
+  console: boolean;
+  files: boolean;
+  backups: boolean;
+  deployments: boolean;
+}
+
+export interface ServerRoleAssignment {
+  id: string;
+  appId: string;
+  principal: string;
+  role: 'owner' | 'admin' | 'operator' | 'viewer' | 'custom';
+  permissions: ServerPermissionSet;
+  createdAt: string;
+}
+
+export interface ServerSnapshot {
+  id: string;
+  appId: string;
+  name: string;
+  schedule: 'manual' | 'automatic';
+  status: 'ready' | 'creating' | 'restoring' | 'failed';
+  sizeMb: number;
+  createdAt: string;
+  restoredAt?: string;
+}
+
+export interface AutopilotRecommendation {
+  id: string;
+  appId: string;
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  description: string;
+  recommendation: string;
+  confidence: number;
+  createdAt: string;
+}
+
+export interface ServerWorkspace {
+  id: string;
+  name: string;
+  appIds: string[];
+  memberCount: number;
+  sharedBackups: boolean;
+  sharedLogs: boolean;
+  createdAt: string;
+}
+
+export interface ServerBillingLedger {
+  appId: string;
+  projectId?: string;
+  currency: 'EUR' | 'USD';
+  currentMonth: number;
+  monthlyEstimate: number;
+  lineItems: Array<{ label: string; amount: number; unit: string }>;
+}
+
 // ============================================================================
 // Custom Report Builder Types
 // ============================================================================

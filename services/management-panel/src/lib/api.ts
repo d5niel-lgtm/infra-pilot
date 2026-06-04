@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { DockerApp, SetupStatus, UserProfile, AppConfig, Customer, ServerPreset, ServerMetric, AccessLog, ConfigVersion, MaintenanceWindow, BackupJob, BackupStatusEntry, AlertConfig, AlertHistoryEntry, HealthCheck, ScheduledTask, GitDeployment, Database, BillingInfo, Transaction, BillingRates, CostEstimate, Modpack, ModpackInstallation } from './types';
+import { DockerApp, SetupStatus, UserProfile, AppConfig, Customer, ServerPreset, ServerMetric, AccessLog, ConfigVersion, MaintenanceWindow, BackupJob, BackupStatusEntry, AlertConfig, AlertHistoryEntry, HealthCheck, ScheduledTask, GitDeployment, Database, BillingInfo, Transaction, BillingRates, CostEstimate, Modpack, ModpackInstallation, ServerCloneRequest, ServerRoleAssignment, ServerSnapshot, AutopilotRecommendation, ServerWorkspace, ServerBillingLedger } from './types';
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
 
@@ -102,6 +102,64 @@ class APIClient {
       params: { search: params.query, level: params.level, from: params.from, to: params.to, page: params.page, limit: params.limit },
     });
     return { logs: res.data.data || [], total: res.data.total || 0, page: res.data.page || 1 };
+  }
+
+
+
+  // Server operations hub endpoints
+  async cloneServer(appId: string, request: ServerCloneRequest): Promise<DockerApp> {
+    const res = await this.api.post(`/api/apps/${appId}/clone`, request);
+    return res.data;
+  }
+
+  async listServerRoles(appId: string): Promise<ServerRoleAssignment[]> {
+    const res = await this.api.get(`/api/apps/${appId}/roles`);
+    return res.data;
+  }
+
+  async upsertServerRole(appId: string, role: Partial<ServerRoleAssignment>): Promise<ServerRoleAssignment> {
+    const res = await this.api.post(`/api/apps/${appId}/roles`, role);
+    return res.data;
+  }
+
+  async listServerSnapshots(appId: string): Promise<ServerSnapshot[]> {
+    const res = await this.api.get(`/api/apps/${appId}/snapshots`);
+    return res.data;
+  }
+
+  async createServerSnapshot(appId: string, snapshot: { name: string; schedule: 'manual' | 'automatic' }): Promise<ServerSnapshot> {
+    const res = await this.api.post(`/api/apps/${appId}/snapshots`, snapshot);
+    return res.data;
+  }
+
+  async restoreServerSnapshot(appId: string, snapshotId: string): Promise<ServerSnapshot> {
+    const res = await this.api.post(`/api/apps/${appId}/snapshots/${snapshotId}/restore`);
+    return res.data;
+  }
+
+  async getAutopilotRecommendations(appId: string): Promise<AutopilotRecommendation[]> {
+    const res = await this.api.get(`/api/apps/${appId}/autopilot`);
+    return res.data;
+  }
+
+  async listWorkspaces(): Promise<ServerWorkspace[]> {
+    const res = await this.api.get('/api/workspaces');
+    return res.data;
+  }
+
+  async createWorkspace(workspace: { name: string; appIds: string[] }): Promise<ServerWorkspace> {
+    const res = await this.api.post('/api/workspaces', workspace);
+    return res.data;
+  }
+
+  async getServerBilling(appId: string): Promise<ServerBillingLedger> {
+    const res = await this.api.get(`/api/apps/${appId}/billing`);
+    return res.data;
+  }
+
+  async installServerPlugin(appId: string, pluginId: string): Promise<{ success: boolean; pluginId: string }> {
+    const res = await this.api.post(`/api/apps/${appId}/plugins/${pluginId}/install`);
+    return res.data;
   }
 
   // User endpoints
@@ -807,7 +865,6 @@ class APIClient {
     const res = await this.api.get('/api/v3/geo/filter-options');
     return res.data;
   }
-}
 
   // === v3 Networking API Methods ===
 

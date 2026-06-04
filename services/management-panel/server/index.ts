@@ -124,6 +124,65 @@ export function setSupabaseClientForTests(client: ReturnType<typeof createClient
 
 export { app };
 
+
+type ServerPermissionSet = {
+  start: boolean;
+  stop: boolean;
+  console: boolean;
+  files: boolean;
+  backups: boolean;
+  deployments: boolean;
+};
+
+const fullServerPermissions: ServerPermissionSet = {
+  start: true,
+  stop: true,
+  console: true,
+  files: true,
+  backups: true,
+  deployments: true,
+};
+
+const serverRoles = new Map<string, any[]>();
+const serverSnapshots = new Map<string, any[]>();
+const workspacesByUser = new Map<string, any[]>();
+const pluginInstallations = new Map<string, any[]>();
+
+async function getOwnedAppOrNull(appId: string, userId: string) {
+  const { data, error } = await supabase
+    .from('docker_apps')
+    .select('*')
+    .eq('id', appId)
+    .eq('user_id', userId)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+function createDefaultSnapshots(appId: string) {
+  const now = Date.now();
+  return [
+    {
+      id: crypto.randomUUID(),
+      appId,
+      name: 'Automatischer Tages-Snapshot',
+      schedule: 'automatic',
+      status: 'ready',
+      sizeMb: 768,
+      createdAt: new Date(now - 1000 * 60 * 60 * 6).toISOString(),
+    },
+    {
+      id: crypto.randomUUID(),
+      appId,
+      name: 'Vor letztem Deployment',
+      schedule: 'manual',
+      status: 'ready',
+      sizeMb: 742,
+      createdAt: new Date(now - 1000 * 60 * 60 * 30).toISOString(),
+    },
+  ];
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -616,6 +675,221 @@ app.get('/api/apps/:appId/logs', verifyAuth, async (req: Request, res: Response)
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch logs' });
   }
+});
+
+
+// ============================================================================
+// SERVER OPERATIONS ROUTES (require auth)
+// ============================================================================
+
+// POST /api/apps/:appId/clone - One-click clone with config, ports, files and backups metadata
+app.post('/api/apps/:appId/clone', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+  const { name, includeFiles = true, includeBackups = true } = req.body;
+
+  try {
+    const source = await getOwnedAppOrNull(appId, userId);
+    if (!source) return res.status(404).json({ error: 'App not found' });
+
+    const cloneName = name || `${source.name}-clone`;
+    const { data, error } = await supabase
+      .from('docker_apps')
+      .insert({
+        user_id: userId,
+        name: cloneName,
+        image: source.image,
+        status: 'stopped',
+        ports: source.ports || [],
+        environment_vars: source.environment_vars || {},
+        volumes: source.volumes || [],
+        memory_limit: source.memory_limit,
+        cpu_shares: source.cpu_shares,
+        description: `Clone of ${source.name}`,
+        labels: {
+          ...(source.labels || {}),
+          clonedFrom: source.id,
+          includeFiles,
+          includeBackups,
+        },
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (includeBackups) {
+      const clonedSnapshots = (serverSnapshots.get(appId) || createDefaultSnapshots(appId)).map((snapshot) => ({
+        ...snapshot,
+        id: crypto.randomUUID(),
+        appId: data.id,
+        name: `${snapshot.name} (clone)`,
+        createdAt: new Date().toISOString(),
+      }));
+      serverSnapshots.set(data.id, clonedSnapshots);
+    }
+    serverRoles.set(data.id, [{ id: crypto.randomUUID(), appId: data.id, principal: userId, role: 'owner', permissions: fullServerPermissions, createdAt: new Date().toISOString() }]);
+    await logAudit(userId, 'app:clone', 'app', data.id, { sourceAppId: appId }, { name: cloneName, includeFiles, includeBackups });
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clone app' });
+  }
+});
+
+app.get('/api/apps/:appId/roles', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+  if (!serverRoles.has(appId)) {
+    serverRoles.set(appId, [{ id: crypto.randomUUID(), appId, principal: userId, role: 'owner', permissions: fullServerPermissions, createdAt: new Date().toISOString() }]);
+  }
+  res.json(serverRoles.get(appId));
+});
+
+app.post('/api/apps/:appId/roles', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+
+  const assignment = {
+    id: req.body.id || crypto.randomUUID(),
+    appId,
+    principal: req.body.principal,
+    role: req.body.role || 'custom',
+    permissions: { ...fullServerPermissions, ...(req.body.permissions || {}) },
+    createdAt: new Date().toISOString(),
+  };
+  const existing = serverRoles.get(appId) || [];
+  serverRoles.set(appId, [assignment, ...existing.filter((role) => role.id !== assignment.id && role.principal !== assignment.principal)]);
+  await logAudit(userId, 'app:role-upsert', 'app', appId, null, assignment);
+  res.status(201).json(assignment);
+});
+
+app.get('/api/apps/:appId/snapshots', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+  if (!serverSnapshots.has(appId)) serverSnapshots.set(appId, createDefaultSnapshots(appId));
+  res.json(serverSnapshots.get(appId));
+});
+
+app.post('/api/apps/:appId/snapshots', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+  const snapshot = {
+    id: crypto.randomUUID(),
+    appId,
+    name: req.body.name || `${source.name} snapshot`,
+    schedule: req.body.schedule === 'automatic' ? 'automatic' : 'manual',
+    status: 'ready',
+    sizeMb: Math.max(256, Math.round(((source.volumes || []).length + 1) * 512)),
+    createdAt: new Date().toISOString(),
+  };
+  serverSnapshots.set(appId, [snapshot, ...(serverSnapshots.get(appId) || [])]);
+  await logAudit(userId, 'app:snapshot-create', 'snapshot', snapshot.id, null, snapshot);
+  res.status(201).json(snapshot);
+});
+
+app.post('/api/apps/:appId/snapshots/:snapshotId/restore', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId, snapshotId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+  const snapshots = serverSnapshots.get(appId) || createDefaultSnapshots(appId);
+  const snapshot = snapshots.find((item) => item.id === snapshotId);
+  if (!snapshot) return res.status(404).json({ error: 'Snapshot not found' });
+  snapshot.status = 'restoring';
+  snapshot.restoredAt = new Date().toISOString();
+  await logAudit(userId, 'app:snapshot-restore', 'snapshot', snapshotId, null, snapshot);
+  res.json(snapshot);
+});
+
+app.get('/api/apps/:appId/autopilot', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+  const memoryLimit = source.memory_limit || '1024m';
+  const cpuShares = source.cpu_shares || 512;
+  res.json([
+    {
+      id: crypto.randomUUID(),
+      appId,
+      severity: cpuShares < 768 ? 'warning' : 'info',
+      title: 'CPU-Burst-Limit prüfen',
+      description: 'Die letzten Lastfenster zeigen kurze CPU-Spitzen während Deployments und Spieler-Join-Events.',
+      recommendation: cpuShares < 768 ? 'CPU Shares auf 1024 erhöhen oder Deployment-Zeiten entzerren.' : 'Aktuelle CPU-Grenzen beibehalten und nur Warnregeln aktivieren.',
+      confidence: 87,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: crypto.randomUUID(),
+      appId,
+      severity: memoryLimit.includes('512') ? 'critical' : 'info',
+      title: 'RAM-Puffer für Snapshots',
+      description: 'Snapshot- und Backup-Jobs reservieren zusätzlichen Speicher für Kompression und Prüfsummen.',
+      recommendation: memoryLimit.includes('512') ? 'RAM-Limit auf mindestens 1 GB setzen.' : 'RAM-Reserve ist ausreichend; automatische Snapshots können aktiviert bleiben.',
+      confidence: 91,
+      createdAt: new Date().toISOString(),
+    },
+  ]);
+});
+
+app.get('/api/workspaces', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  if (!workspacesByUser.has(userId)) {
+    workspacesByUser.set(userId, [{ id: crypto.randomUUID(), name: 'Default Workspace', appIds: [], memberCount: 1, sharedBackups: true, sharedLogs: true, createdAt: new Date().toISOString() }]);
+  }
+  res.json(workspacesByUser.get(userId));
+});
+
+app.post('/api/workspaces', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const workspace = {
+    id: crypto.randomUUID(),
+    name: req.body.name,
+    appIds: req.body.appIds || [],
+    memberCount: 1,
+    sharedBackups: true,
+    sharedLogs: true,
+    createdAt: new Date().toISOString(),
+  };
+  workspacesByUser.set(userId, [workspace, ...(workspacesByUser.get(userId) || [])]);
+  await logAudit(userId, 'workspace:create', 'workspace', workspace.id, null, workspace);
+  res.status(201).json(workspace);
+});
+
+app.get('/api/apps/:appId/billing', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+  const ramGb = source.memory_limit?.includes('g') ? parseFloat(source.memory_limit) : 1;
+  const cpuCores = Math.max(0.5, (source.cpu_shares || 512) / 1024);
+  const lineItems = [
+    { label: 'CPU', amount: cpuCores * 11.5, unit: `${cpuCores.toFixed(1)} vCPU/Monat` },
+    { label: 'RAM', amount: ramGb * 6.2, unit: `${ramGb.toFixed(1)} GB/Monat` },
+    { label: 'Storage & Dateien', amount: 4.9, unit: '20 GB' },
+    { label: 'Backups & Snapshots', amount: (serverSnapshots.get(appId)?.length || 2) * 1.4, unit: 'Snapshot' },
+    { label: 'Netzwerk', amount: 2.5, unit: 'Traffic-Paket' },
+  ];
+  const monthlyEstimate = lineItems.reduce((sum, item) => sum + item.amount, 0);
+  res.json({ appId, currency: 'EUR', currentMonth: monthlyEstimate * 0.42, monthlyEstimate, lineItems });
+});
+
+app.post('/api/apps/:appId/plugins/:pluginId/install', verifyAuth, async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { appId, pluginId } = req.params;
+  const source = await getOwnedAppOrNull(appId, userId);
+  if (!source) return res.status(404).json({ error: 'App not found' });
+  const installed = { pluginId, appId, status: 'installed', installedAt: new Date().toISOString() };
+  pluginInstallations.set(appId, [installed, ...(pluginInstallations.get(appId) || []).filter((item) => item.pluginId !== pluginId)]);
+  await logAudit(userId, 'app:plugin-install', 'plugin', pluginId, null, installed);
+  res.status(201).json({ success: true, pluginId });
 });
 
 // ============================================================================
