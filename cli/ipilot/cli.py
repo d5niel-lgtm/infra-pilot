@@ -6,6 +6,18 @@ from . import __version__
 from .config import load_config, save_config, set_key, get
 from .client import ApiClient
 from .output import print_output
+from .commands.health import get_health_status, format_health_output
+
+def health(): # file is located in cli/ipilot/commands/health.py
+    # api endpoint aufrufen, um Status zu prüfen
+    return get_health_status()
+
+
+def cmd_health(args):
+    """Health Check Befehl - zeigt den Status aller Systemkomponenten"""
+    health_data = health()
+    formatted_output = format_health_output(health_data)
+    print_output(formatted_output, args.output)
 
 
 def get_client():
@@ -876,6 +888,9 @@ def build_parser():
     p_login.add_argument('api_key', help='API key')
 
     sub.add_parser('logout', help='Clear authentication token')
+
+    p_health = sub.add_parser('health', help='System health check')
+    p_health.set_defaults(func=cmd_health)
 
     p_server = sub.add_parser('server', help='Server management commands')
     p_server_sub = p_server.add_subparsers(dest='subcommand')

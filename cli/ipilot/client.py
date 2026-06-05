@@ -56,6 +56,9 @@ class ApiClient:
     def server_status(self, server_id):
         return self._request('GET', f'/servers/{server_id}/status')
 
+    def health_check(self):
+        return self._request('GET', '/health')
+
     def get_logs(self, server_id, lines=50, follow=False):
         params = f'?lines={lines}&follow={"true" if follow else "false"}'
         return self._request('GET', f'/servers/{server_id}/logs{params}')
