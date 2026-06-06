@@ -69,3 +69,33 @@ export const breakpoints = {
   tablet: 768,
   desktop: 1024,
 };
+
+export const glass = {
+  regular: {
+    background: 'rgba(11, 18, 32, 0.65)',
+    blur: 'blur(40px) saturate(1.4)',
+    border: 'rgba(255, 255, 255, 0.08)',
+  },
+  clear: {
+    background: 'rgba(11, 18, 32, 0.35)',
+    blur: 'blur(60px) saturate(1.8)',
+    border: 'rgba(255, 255, 255, 0.06)',
+  },
+  prominent: {
+    background: 'rgba(78, 168, 255, 0.2)',
+    blur: 'blur(40px) saturate(1.4)',
+    border: 'rgba(78, 168, 255, 0.15)',
+  },
+  light: {
+    background: 'rgba(255, 255, 255, 0.08)',
+    blur: 'blur(30px) saturate(1.2)',
+    border: 'rgba(255, 255, 255, 0.1)',
+  },
+  dark: {
+    background: 'rgba(0, 0, 0, 0.5)',
+    blur: 'blur(50px) saturate(1.6)',
+    border: 'rgba(255, 255, 255, 0.05)',
+  },
+};
+
+export type GlassTokens = typeof glass;
