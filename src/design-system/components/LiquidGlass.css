@@ -1,0 +1,48 @@
+.lg-glass {
+  background: rgba(11, 18, 32, 0.65);
+  backdrop-filter: blur(40px) saturate(1.4);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lg-glass-clear {
+  background: rgba(11, 18, 32, 0.35);
+  backdrop-filter: blur(60px) saturate(1.8);
+  -webkit-backdrop-filter: blur(60px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lg-glass-prominent {
+  background: rgba(78, 168, 255, 0.2);
+  backdrop-filter: blur(40px) saturate(1.4);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  border: 1px solid rgba(78, 168, 255, 0.15);
+}
+
+.lg-glass-light {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px) saturate(1.2);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lg-glass-dark {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(50px) saturate(1.6);
+  -webkit-backdrop-filter: blur(50px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lg-glass-morph {
+  transition: backdrop-filter 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+              background 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+              border-color 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+              box-shadow 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.lg-glass-edge {
+  background: linear-gradient(to right, transparent, rgba(11, 18, 32, 0.65) 40%, rgba(11, 18, 32, 0.65) 100%);
+  backdrop-filter: blur(40px) saturate(1.4);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+}

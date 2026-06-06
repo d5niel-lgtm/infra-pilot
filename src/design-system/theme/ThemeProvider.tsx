@@ -1,7 +1,7 @@
 import React from 'react';
-import { colors, typography, space, radii, shadows, breakpoints } from '../../design-tokens/tokens';
+import { colors, typography, space, radii, shadows, breakpoints, glass } from '../../design-tokens/tokens';
 
-type Theme = typeof colors & typeof typography & typeof space & typeof radii & typeof shadows & typeof breakpoints;
+type Theme = typeof colors & typeof typography & typeof space & typeof radii & typeof shadows & typeof breakpoints & typeof glass;
 
 export const ThemeContext = React.createContext<Partial<Theme>>({});
 
@@ -13,6 +13,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ...radii,
     ...shadows,
     breakpoints,
+    glass,
   } as any;
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 };
