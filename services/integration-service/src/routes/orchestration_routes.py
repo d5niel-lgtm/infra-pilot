@@ -207,8 +207,9 @@ def setup_orchestration_routes(app, wf_manager, ansible_manager, pipeline_manage
         try:
             instance = runbook_manager.instantiate_template(request.match_info["template_id"], data.get("variables", {}), data.get("initiated_by", "system"))
             return web.json_response(instance, status=201)
-        except ValueError as e:
-            raise web.HTTPBadRequest(text=str(e))
+        except ValueError:
+            logger.warning("Invalid template instantiation request", exc_info=True)
+            raise web.HTTPBadRequest(text="Invalid template instantiation request.")
 
     async def list_chaos_experiments(request):
         status = request.query.get("status")
