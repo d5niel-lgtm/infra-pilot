@@ -1053,7 +1053,7 @@ app.post('/api/apps/:appId/config/write', verifyAuth, async (req: Request, res: 
 
     // Write new content
     const escapedContent = content.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    await execAsync(`docker exec -i ${app.container_id} tee ${filePath}`, { input: content });
+    await runCommand('docker', ['exec', '-i', app.container_id, 'tee', filePath], content);
 
     await logAudit(userId, 'config:write', 'config_file', `${appId}:${filePath}`, null, { backupPath });
     res.json({ success: true, backupPath });
