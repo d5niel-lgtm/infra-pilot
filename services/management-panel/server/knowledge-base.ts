@@ -39,7 +39,12 @@ function sanitizeArticleId(id: string): string {
 
 function articlePath(id: string): string {
   const safeId = sanitizeArticleId(id);
-  return path.join(KB_DIR, `${safeId}.md`);
+  const resolvedPath = path.resolve(KB_DIR, `${safeId}.md`);
+  const kbRootWithSep = KB_DIR.endsWith(path.sep) ? KB_DIR : `${KB_DIR}${path.sep}`;
+  if (!resolvedPath.startsWith(kbRootWithSep)) {
+    throw new Error('Invalid article path');
+  }
+  return resolvedPath;
 }
 
 function metaPath(): string {
