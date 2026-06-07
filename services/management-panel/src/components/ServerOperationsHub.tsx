@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { apiClient } from '../lib/api';
+import { Effect, pipe } from 'effect';
+import { apiClientEffect, NetworkError } from '../lib/effect';
 import type {
-  AutopilotRecommendation,
   DockerApp,
-  ServerBillingLedger,
   ServerPermissionSet,
   ServerRoleAssignment,
   ServerSnapshot,
@@ -38,9 +37,9 @@ export function ServerOperationsHub({ app, onCloned }: ServerOperationsHubProps)
   const [cloneName, setCloneName] = useState(`${app.name}-clone`);
   const [snapshots, setSnapshots] = useState<ServerSnapshot[]>([]);
   const [roles, setRoles] = useState<ServerRoleAssignment[]>([]);
-  const [recommendations, setRecommendations] = useState<AutopilotRecommendation[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [workspaces, setWorkspaces] = useState<ServerWorkspace[]>([]);
-  const [billing, setBilling] = useState<ServerBillingLedger | null>(null);
+  const [billing, setBilling] = useState<any>(null);
   const [roleEmail, setRoleEmail] = useState('ops@example.com');
   const [snapshotName, setSnapshotName] = useState(`${app.name} manual snapshot`);
   const [workspaceName, setWorkspaceName] = useState('Kundenprojekt Alpha');
@@ -52,92 +51,116 @@ export function ServerOperationsHub({ app, onCloned }: ServerOperationsHubProps)
     [roles]
   );
 
-  const loadHub = async () => {
-    setLoading(true);
-    try {
-      const [snapshotData, roleData, autopilotData, workspaceData, billingData] = await Promise.all([
-        apiClient.listServerSnapshots(app.id),
-        apiClient.listServerRoles(app.id),
-        apiClient.getAutopilotRecommendations(app.id),
-        apiClient.listWorkspaces(),
-        apiClient.getServerBilling(app.id),
-      ]);
-      setSnapshots(snapshotData);
-      setRoles(roleData);
-      setRecommendations(autopilotData);
-      setWorkspaces(workspaceData);
-      setBilling(billingData);
-    } catch {
-      toast.error('Server-Operations konnten nicht geladen werden');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    void loadHub();
+    const program = pipe(
+      Effect.all([
+        apiClientEffect.listServerSnapshots(app.id),
+        apiClientEffect.listServerRoles(app.id),
+        apiClientEffect.getAutopilotRecommendations(app.id),
+        apiClientEffect.listWorkspaces(),
+        apiClientEffect.getServerBilling(app.id),
+      ]),
+      Effect.tap(([snapshotData, roleData, autopilotData, workspaceData, billingData]) =>
+        Effect.sync(() => {
+          setSnapshots(snapshotData);
+          setRoles(roleData as ServerRoleAssignment[]);
+          setRecommendations(autopilotData);
+          setWorkspaces(workspaceData);
+          setBilling(billingData);
+        })
+      ),
+      Effect.catchAll((error) =>
+        Effect.sync(() => {
+          if (error instanceof NetworkError) {
+            toast.error('Netzwerkfehler beim Laden der Server-Operationen');
+          } else {
+            toast.error('Server-Operations konnten nicht geladen werden');
+          }
+        })
+      ),
+      Effect.ensuring(Effect.sync(() => setLoading(false)))
+    );
+
+    const cancel = Effect.runCallback(program, {
+      onInterrupt: () => setLoading(false),
+    });
+    return cancel;
   }, [app.id]);
 
-  const cloneServer = async () => {
-    try {
-      const clone = await apiClient.cloneServer(app.id, { name: cloneName, includeBackups: true, includeFiles: true });
-      toast.success(`Server ${clone.name} wurde dupliziert`);
-      onCloned?.(clone);
-    } catch {
-      toast.error('Server konnte nicht dupliziert werden');
-    }
+  const cloneServer = () => {
+    Effect.runPromise(
+      pipe(
+        apiClientEffect.cloneServer(app.id, { name: cloneName, includeBackups: true, includeFiles: true }),
+        Effect.tap((clone) => Effect.sync(() => {
+          toast.success(`Server ${clone.name} wurde dupliziert`);
+          onCloned?.(clone);
+        })),
+        Effect.catchAll(() => Effect.sync(() => toast.error('Server konnte nicht dupliziert werden')))
+      )
+    );
   };
 
-  const createSnapshot = async (schedule: 'manual' | 'automatic') => {
-    try {
-      const snapshot = await apiClient.createServerSnapshot(app.id, { name: snapshotName, schedule });
-      setSnapshots((current) => [snapshot, ...current]);
-      toast.success('Snapshot wurde erstellt');
-    } catch {
-      toast.error('Snapshot konnte nicht erstellt werden');
-    }
+  const createSnapshot = (schedule: 'manual' | 'automatic') => {
+    Effect.runPromise(
+      pipe(
+        apiClientEffect.createServerSnapshot(app.id, { name: snapshotName, schedule }),
+        Effect.tap((snapshot) => Effect.sync(() => {
+          setSnapshots((current) => [snapshot, ...current]);
+          toast.success('Snapshot wurde erstellt');
+        })),
+        Effect.catchAll(() => Effect.sync(() => toast.error('Snapshot konnte nicht erstellt werden')))
+      )
+    );
   };
 
-  const restoreSnapshot = async (snapshotId: string) => {
-    try {
-      await apiClient.restoreServerSnapshot(app.id, snapshotId);
-      toast.success('Snapshot-Restore wurde eingeplant');
-    } catch {
-      toast.error('Snapshot konnte nicht wiederhergestellt werden');
-    }
+  const restoreSnapshot = (snapshotId: string) => {
+    Effect.runPromise(
+      pipe(
+        apiClientEffect.restoreServerSnapshot(app.id, snapshotId),
+        Effect.tap(() => Effect.sync(() => toast.success('Snapshot-Restore wurde eingeplant'))),
+        Effect.catchAll(() => Effect.sync(() => toast.error('Snapshot konnte nicht wiederhergestellt werden')))
+      )
+    );
   };
 
-  const addRole = async () => {
-    try {
-      const assignment = await apiClient.upsertServerRole(app.id, {
-        principal: roleEmail,
-        role: 'operator',
-        permissions: { start: true, stop: true, console: true, files: false, backups: true, deployments: false },
-      });
-      setRoles((current) => [assignment, ...current.filter((role) => role.id !== assignment.id)]);
-      toast.success('Rollenrechte gespeichert');
-    } catch {
-      toast.error('Rollenrechte konnten nicht gespeichert werden');
-    }
+  const addRole = () => {
+    Effect.runPromise(
+      pipe(
+        apiClientEffect.upsertServerRole(app.id, {
+          principal: roleEmail,
+          role: 'operator',
+          permissions: { start: true, stop: true, console: true, files: false, backups: true, deployments: false },
+        }),
+        Effect.tap((assignment) => Effect.sync(() => {
+          setRoles((current) => [assignment, ...current.filter((r) => r.id !== assignment.id)]);
+          toast.success('Rollenrechte gespeichert');
+        })),
+        Effect.catchAll(() => Effect.sync(() => toast.error('Rollenrechte konnten nicht gespeichert werden')))
+      )
+    );
   };
 
-  const createWorkspace = async () => {
-    try {
-      const workspace = await apiClient.createWorkspace({ name: workspaceName, appIds: [app.id] });
-      setWorkspaces((current) => [workspace, ...current]);
-      toast.success('Workspace wurde erstellt');
-    } catch {
-      toast.error('Workspace konnte nicht erstellt werden');
-    }
+  const createWorkspace = () => {
+    Effect.runPromise(
+      pipe(
+        apiClientEffect.createWorkspace({ name: workspaceName, appIds: [app.id] }),
+        Effect.tap((workspace) => Effect.sync(() => {
+          setWorkspaces((current) => [workspace, ...current]);
+          toast.success('Workspace wurde erstellt');
+        })),
+        Effect.catchAll(() => Effect.sync(() => toast.error('Workspace konnte nicht erstellt werden')))
+      )
+    );
   };
 
-  const installPlugin = async (pluginId: string) => {
-    try {
-      await apiClient.installServerPlugin(app.id, pluginId);
-      toast.success('Plugin/Mod wurde installiert');
-    } catch {
-      toast.error('Plugin/Mod konnte nicht installiert werden');
-    }
+  const installPlugin = (pluginId: string) => {
+    Effect.runPromise(
+      pipe(
+        apiClientEffect.installServerPlugin(app.id, pluginId),
+        Effect.tap(() => Effect.sync(() => toast.success('Plugin/Mod wurde installiert'))),
+        Effect.catchAll(() => Effect.sync(() => toast.error('Plugin/Mod konnte nicht installiert werden')))
+      )
+    );
   };
 
   if (loading) {
