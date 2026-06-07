@@ -34,7 +34,8 @@ def setup_orchestration_routes(app, wf_manager, ansible_manager, pipeline_manage
             execution = await wf_manager.execute_workflow(request.match_info["workflow_id"], data.get("trigger_data", {}))
             return web.json_response(execution.to_dict())
         except ValueError as e:
-            raise web.HTTPBadRequest(text=str(e))
+            logger.exception("Invalid execute_workflow request: %s", e)
+            raise web.HTTPBadRequest(text="Invalid request.")
 
     async def get_executions(request):
         wf_id = request.match_info.get("workflow_id", "")
