@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { IntlProvider } from 'react-intl';
 import { Toaster } from 'sonner';
 import { apiClient } from './lib/api';
-import { getAccessToken, setAccessToken } from './lib/auth';
+import { apiClientEffect, useEffectful } from './lib/effect';
+import { getAccessToken } from './lib/auth';
 import { ConfigContext, SetupMode } from './lib/types';
 import { Setup } from './pages/Setup';
 import { Dashboard } from './pages/Dashboard';
@@ -89,11 +90,15 @@ const SimpleLogo = ({ size = 64 }: { size?: number }) => (
 );
 
 export default function App() {
-  const [initialized, setInitialized] = useState(false);
   const [mode, setMode] = useState<SetupMode>('personal');
-  const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [locale, setLocaleState] = useState<SupportedLocale>(detectBrowserLocale());
+
+  const { data: status, loading } = useEffectful(
+    () => apiClientEffect.getSetupStatus(),
+    []
+  );
+  const initialized = status ? status.initialized : false;
 
   const setLocale = useCallback((l: SupportedLocale) => {
     setLocaleState(l);
@@ -113,31 +118,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const status = await apiClient.getSetupStatus();
-
-        if (!status.initialized) {
-          setInitialized(false);
-        } else {
-          setInitialized(true);
-          setMode(status.mode as SetupMode);
-
-          const token = getAccessToken();
-          if (token) {
-            apiClient.setToken(token);
-            setAuthenticated(true);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to check setup status:', error);
-      } finally {
-        setLoading(false);
+    if (!status) return;
+    if (status.initialized) {
+      setMode(status.mode as SetupMode);
+      const token = getAccessToken();
+      if (token) {
+        apiClient.setToken(token);
+        setAuthenticated(true);
       }
-    };
-
-    init();
-  }, []);
+    }
+  }, [status]);
 
   if (loading) {
     return (

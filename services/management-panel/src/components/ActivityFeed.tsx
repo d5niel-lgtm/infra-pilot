@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Filter, Download, Search, Clock, User, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Filter, Download, Clock, User, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { apiClient } from '../lib/api';
-import type { ActivityEvent, ActivityEventType } from '../lib/types';
+import { apiClientEffect, useEffectful } from '../lib/effect';
+import type { ActivityEvent } from '../lib/types';
 
 const severityIcons = {
   info: Info,
@@ -44,35 +45,25 @@ interface ActivityFeedProps {
 }
 
 export function ActivityFeed({ limit = 50, compact = false }: ActivityFeedProps) {
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [offset, setOffset] = useState(0);
   const [typeFilter, setTypeFilter] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const fetchEvents = useCallback(async () => {
-    try {
-      setLoading(true);
-      const result = await apiClient.getActivityFeed({
-        limit,
-        offset,
-        type: typeFilter || undefined,
-        from: dateFrom || undefined,
-        to: dateTo || undefined,
-      });
-      setEvents(result.events);
-      setTotal(result.total);
-    } catch {
-      console.error('Failed to fetch activity feed');
-    } finally {
-      setLoading(false);
-    }
-  }, [limit, offset, typeFilter, dateFrom, dateTo]);
+  const { data, loading, refresh } = useEffectful(
+    () => apiClientEffect.getActivityFeed({
+      limit,
+      offset,
+      type: typeFilter || undefined,
+      from: dateFrom || undefined,
+      to: dateTo || undefined,
+    }),
+    [limit, offset, typeFilter, dateFrom, dateTo]
+  );
 
-  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+  const events = data?.events ?? [];
+  const total = data?.total ?? 0;
+  const hasMore = offset + limit < total;
 
   const handleExport = async (format: 'csv' | 'json') => {
     try {
@@ -94,7 +85,6 @@ export function ActivityFeed({ limit = 50, compact = false }: ActivityFeedProps)
   };
 
   const loadMore = () => setOffset(o => o + limit);
-  const hasMore = offset + limit < total;
 
   return (
     <div className="space-y-4">

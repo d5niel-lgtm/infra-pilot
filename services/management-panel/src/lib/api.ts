@@ -3,6 +3,7 @@ import { DockerApp, SetupStatus, UserProfile, AppConfig, Customer, ServerPreset,
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
 
+export type { APIClient };
 class APIClient {
   private api: AxiosInstance;
   private token: string | null = null;
