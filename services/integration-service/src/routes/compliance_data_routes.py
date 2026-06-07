@@ -78,8 +78,9 @@ def setup_vendor_routes(app, vendor_manager):
         try:
             assessment = vendor_manager.create_assessment(vendor_id, data["template_type"], data.get("assessor", "system"))
             return web.json_response(assessment, status=201)
-        except ValueError as e:
-            raise web.HTTPBadRequest(text=str(e))
+        except ValueError:
+            logger.exception("Failed to create assessment for vendor_id=%s", vendor_id)
+            raise web.HTTPBadRequest(text="Invalid assessment request")
 
     async def get_assessment(request):
         vendor_id = request.match_info["vendor_id"]
