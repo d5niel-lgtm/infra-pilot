@@ -6,6 +6,26 @@ infra pilot bündelt mehrere services und hilfsbibliotheken, um container-/game-
 
 orchestrate. automate. scale.
 
+## quickstart in 5 minuten
+
+**voraussetzungen:** git, docker & docker compose
+
+```bash
+git clone https://github.com/DaaanielTV/infra-pilot.git
+cd infra-pilot
+cp .env.example .env
+docker compose up -d
+```
+
+**was sollte ich jetzt sehen?**
+
+| service | url |
+|---------|-----|
+| management panel (frontend) | http://localhost:5173 |
+| management panel (api) | http://localhost:3001 |
+| integration service api | http://localhost:9000 |
+| orchestrator health | http://localhost:8500/health |
+
 ## inhaltsverzeichnis
 
 • [aktueller projektstatus](#aktueller-projektstatus)
