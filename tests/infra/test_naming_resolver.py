@@ -12,6 +12,38 @@ def clear_map_cache():
     yield
 
 
+class TestLoadYamlFile:
+    def test_load_yaml_file_returns_dict(self, tmp_path):
+        from infra.naming.resolver import _load_yaml_file
+        p = tmp_path / "test.yaml"
+        p.write_text("key: value\nnested: {a: 1}")
+        result = _load_yaml_file(p)
+        assert result == {"key": "value", "nested": {"a": 1}}
+
+    def test_load_yaml_file_nonexistent(self):
+        from infra.naming.resolver import _load_yaml_file
+        assert _load_yaml_file(Path("/nonexistent/file.yaml")) == {}
+
+    def test_load_yaml_file_invalid_yaml(self):
+        from infra.naming.resolver import _load_yaml_file
+        from io import StringIO
+        with patch("builtins.open", return_value=StringIO("{invalid: yaml: :broken")):
+            p = Path("/tmp/fake.yaml")
+            with patch.object(Path, "exists", return_value=True):
+                assert _load_yaml_file(p) == {}
+
+    def test_load_yaml_file_none_path(self):
+        from infra.naming.resolver import _load_yaml_file
+        assert _load_yaml_file(None) == {}
+
+    def test_load_yaml_file_empty_file(self, tmp_path):
+        from infra.naming.resolver import _load_yaml_file
+        p = tmp_path / "empty.yaml"
+        p.write_text("")
+        result = _load_yaml_file(p)
+        assert result == {}
+
+
 class TestLoadBaseMap:
     def test_load_base_map_returns_dict(self):
         from infra.naming.resolver import _load_base_map

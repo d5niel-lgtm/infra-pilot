@@ -6,16 +6,7 @@ import yaml
 _BASE_MAP_PATH = Path(__file__).parent / "provider_map.yaml"
 _OVERRIDES_ENV_PATH = None  # can be overridden by PROVIDER_CONFIG_OVERRIDE env var
 
-def _load_base_map() -> dict:
-    if not _BASE_MAP_PATH.exists():
-        return {}
-    with open(_BASE_MAP_PATH, "r", encoding="utf-8") as f:
-        try:
-            return yaml.safe_load(f) or {}
-        except Exception:
-            return {}
-
-def _load_overrides_from_path(path: Path) -> dict:
+def _load_yaml_file(path: Path) -> dict:
     if not path or not path.exists():
         return {}
     with open(path, "r", encoding="utf-8") as f:
@@ -23,6 +14,12 @@ def _load_overrides_from_path(path: Path) -> dict:
             return yaml.safe_load(f) or {}
         except Exception:
             return {}
+
+def _load_base_map() -> dict:
+    return _load_yaml_file(_BASE_MAP_PATH)
+
+def _load_overrides_from_path(path: Path) -> dict:
+    return _load_yaml_file(path)
 
 def _default_overrides_path() -> Path:
     base = Path(__file__).parent / ".." / "overrides" / "provider_map.yaml"
