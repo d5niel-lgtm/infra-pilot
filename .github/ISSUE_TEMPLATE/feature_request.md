@@ -12,25 +12,25 @@ assignees: ''
 
 ## Use Case / Problem
 
-<!-- Required. What problem does this solve? When would you use this feature? -->
+<!-- What problem does this solve? When would you use this feature? -->
 
 **Example:** "As an operator, I want to automatically restart failed agents so that services are restored without manual intervention."
 
 ## Proposed Solution
 
-<!-- Required. How should this feature work? Be as specific as possible. -->
+<!-- How should this feature work? Be as specific as possible. -->
 
 **Example:** "Add a `--restart-policy` flag to the agent CLI that accepts `always`, `on-failure`, or `never`."
 
 ## Alternatives Considered
 
-<!-- Optional. What other approaches or workarounds have you considered? -->
+<!-- What other approaches or workarounds have you considered? -->
 
 **Example:** "Currently we use a cron job to check and restart agents, but it's unreliable."
 
 ## Additional Context
 
-<!-- Optional. Add any other context, examples, mockups, or screenshots here. -->
+<!-- Add any other context, examples, mockups, or screenshots here. -->
 
 ## Components Affected
 
