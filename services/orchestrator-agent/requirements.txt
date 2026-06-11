@@ -12,4 +12,4 @@ pillow==11.2.0
 typing-extensions==4.15.0
 requests==2.33.0
 croniter==6.0.0
-aiofiles==24.1.0
+aiofiles==25.1.0
