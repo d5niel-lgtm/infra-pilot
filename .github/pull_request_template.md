@@ -1,20 +1,20 @@
-## Was wurde geändert?
+## Description
 
-<!-- Kurze Beschreibung der Änderungen und warum sie nötig sind -->
+<!-- Describe the changes and why they are needed. -->
 
-## Wie getestet?
+## How Was This Tested?
 
-- [ ] Unit-Tests laufen durch
-- [ ] Integrationstests laufen durch
-- [ ] Manuell getestet (lokal / dev)
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] Manually tested (local / dev environment)
 
-## Risiken / Rollback
+## Risks & Rollback
 
-<!-- Bekannte Risiken, Auswirkungen auf andere Systeme, Rollback-Plan -->
+<!-- Describe known risks, impact on other systems, and rollback plan. -->
 
-## Selbstreview
+## Self-Review
 
-- [ ] Code entspricht den Projekt-Conventions
-- [ ] Keine auskommentierten oder unnötigen Codestellen
-- [ ] Logging / Fehlerbehandlung ausreichend
-- [ ] Breaking Changes dokumentiert (falls zutreffend)
+- [ ] Code follows project conventions
+- [ ] No commented-out or unused code
+- [ ] Logging and error handling are adequate
+- [ ] Breaking changes are documented (if applicable)

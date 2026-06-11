@@ -1,17 +1,16 @@
 # Contributing to Infra Pilot
 
-First off, thank you for considering contributing! All types of contributions are welcome — whether it's a bug fix, new feature, documentation improvement, or a discussion starter.
+Thank you for considering contributing. All contributions are welcome — bug fixes, features, docs, or discussions.
 
 ## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
-- [Branch Naming Conventions](#branch-naming-conventions)
+- [Branch Naming](#branch-naming)
 - [Commit Style](#commit-style)
 - [Pull Request Workflow](#pull-request-workflow)
 - [PR Checklist](#pr-checklist)
 - [Test Requirements](#test-requirements)
-- [PR Title Examples](#pr-title-examples)
 
 ## Code of Conduct
 
@@ -30,22 +29,22 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We expect all 
 4. Make your changes and ensure all existing and new tests pass.
 5. Push your branch and open a Pull Request against `main`.
 
-## Branch Naming Conventions
+## Branch Naming
 
-Use descriptive names following this pattern:
+Use descriptive names with the following prefixes:
 
-| Prefix      | Use Case                         | Example                          |
-|-------------|----------------------------------|----------------------------------|
-| `feat/`     | A new feature                    | `feat/oidc-sso-provider`         |
-| `fix/`      | A bug fix                        | `fix/container-logs-encoding`    |
-| `docs/`     | Documentation changes            | `docs/api-endpoint-reference`    |
-| `refactor/` | Code restructuring              | `refactor/orchestrator-cog-loader` |
-| `test/`     | Adding or updating tests         | `test/integration-service-auth`  |
-| `chore/`    | Build, CI, or tooling changes    | `chore/upgrade-node-to-20`       |
-| `perf/`     | Performance improvements         | `perf/panel-metric-polling`      |
-| `style/`    | Code style, formatting           | `style/eslint-config-align`      |
+| Prefix      | Use Case                     | Example                          |
+|-------------|------------------------------|----------------------------------|
+| `feat/`     | New feature                  | `feat/oidc-sso-provider`         |
+| `fix/`      | Bug fix                      | `fix/container-logs-encoding`    |
+| `docs/`     | Documentation changes        | `docs/api-endpoint-reference`    |
+| `refactor/` | Code restructuring           | `refactor/orchestrator-cog-loader` |
+| `test/`     | Adding or updating tests     | `test/integration-service-auth`  |
+| `chore/`    | Build, CI, or tooling        | `chore/upgrade-node-to-20`       |
+| `perf/`     | Performance improvements     | `perf/panel-metric-polling`      |
+| `style/`    | Code style, formatting       | `style/eslint-config-align`      |
 
-Use hyphens (`-`) as word separators. Keep branch names concise but descriptive.
+Use hyphens (`-`) as word separators. Keep names concise but descriptive.
 
 ## Commit Style
 
@@ -71,7 +70,7 @@ docs(api): document webhook event bus endpoints
 test(integration): add auth 2fa flow coverage
 ```
 
-Write the commit message in **imperative mood** ("add" not "added"). Keep the summary under 72 characters.
+Write commit messages in **imperative mood** ("add" not "added"). Keep the summary under 72 characters.
 
 ## Pull Request Workflow
 
@@ -82,19 +81,17 @@ Write the commit message in **imperative mood** ("add" not "added"). Keep the su
    git rebase upstream/main
    ```
 
-2. Run the full test suite before pushing:
+2. Run the full test suite:
 
    ```bash
-   # Root-level tests
    pytest tests/
-   # Service-specific tests — see individual READMEs
    cd services/management-panel && npm test
    cd services/orchestrator-agent && pytest
    ```
 
 3. Push your branch and open a PR against `main`.
 4. Fill in the [PR template](.github/pull_request_template.md) completely.
-5. Request a review from maintainers (visible in [OWNERS.md](OWNERS.md)).
+5. Request a review from the maintainers.
 6. Respond to review feedback with additional commits on the same branch.
 
 ## PR Checklist
@@ -103,10 +100,10 @@ Before submitting, verify that:
 
 - [ ] Branch name follows the naming convention (`type/descriptive-name`)
 - [ ] Commits follow [Conventional Commits](https://www.conventionalcommits.org/) style
-- [ ] PR title is clear and describes the change (see examples below)
+- [ ] PR title is clear and describes the change
 - [ ] PR template is filled out completely
 - [ ] Code compiles/lints without new warnings or errors
-- [ ] Existing tests pass (run `pytest tests/` and/or `npm test`)
+- [ ] Existing tests pass
 - [ ] New tests cover the changes (unit and/or integration)
 - [ ] Documentation is updated if behavior or APIs changed
 - [ ] No secrets, tokens, or credentials are committed
@@ -121,20 +118,8 @@ Before submitting, verify that:
 
   ```bash
   pytest tests/                           # Python tests (orchestrator, integration)
-  cd services/management-panel && npm test  # Panel frontend + API tests
-  cd services/discord-service && npm test   # Discord service tests
+  cd services/management-panel && npm test # Panel frontend + API tests
+  cd services/discord-service && npm test  # Discord service tests
   ```
 
 - Code coverage should not decrease. Run `./scripts/coverage.sh` or the equivalent for your service to check.
-
-## PR Title Examples
-
-Good PR title examples:
-
-- `feat(orchestrator): add kubernetes cluster manager deployment cog`
-- `fix(panel): resolve websocket race condition on reconnect`
-- `docs(api): document webhook event bus with request/response examples`
-- `refactor(integration): extract notification dispatcher from auth module`
-- `test(panel): add unit tests for config editor YAML parser`
-
-Each title is scoped to a component, uses the conventional commit type, and clearly describes the change in a single line.

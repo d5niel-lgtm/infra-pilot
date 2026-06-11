@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Create a bug report to help us improve Infra Pilot
+about: Create a report to help us improve Infra Pilot
 title: "[Bug] "
 labels: bug
 assignees: ''
@@ -12,7 +12,7 @@ assignees: ''
 
 ## Steps to Reproduce
 
-<!-- Required. Provide a minimal, step-by-step reproduction case. -->
+<!-- Provide a minimal, step-by-step reproduction case. -->
 
 1. Go to '...'
 2. Click on '...'
@@ -21,13 +21,13 @@ assignees: ''
 
 ## Expected Behavior
 
-<!-- Required. What did you expect to happen? -->
+<!-- What did you expect to happen? -->
 
 A clear and concise description of what you expected to happen.
 
 ## Actual Behavior
 
-<!-- Required. What actually happened instead? -->
+<!-- What actually happened instead? -->
 
 A clear and concise description of what actually happened.
 
@@ -50,6 +50,6 @@ A clear and concise description of what actually happened.
 
 ## Related Issues
 
-<!-- Link any related issues here, e.g., "Relates to #42". -->
+<!-- Link any related issues, e.g., "Relates to #42". -->
 
-closes #
+Closes #
